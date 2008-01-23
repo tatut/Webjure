@@ -3,11 +3,22 @@
 
 (in-namespace 'webjure-demos)
 
+(refer '(webjure
+	 *request* *response*
+	 request-headers request-path
+	 require
+	 html-format
+	 response-writer
+	 publish
+	 send-output
+	 slurp-post-data
+	 format-date))
 
-(defn index [method req resp]
-  (. resp (setContentType "text/html")) ;; for links browser
-  (webjure/html-format
-   (webjure/response-writer resp)
+
+(defn index []
+  (. *response* (setContentType "text/html")) ;; for links browser
+  (html-format
+   (response-writer)
    
    (let [url (fn [x] (strcat "http://localhost:8080/webjure/" x))]
      `(:html 
@@ -26,10 +37,10 @@
 	      (:div {:style "text-align: center; width: 300px; position: absolute; left: -150; border: dotted black 2px; background-color: yellow; padding: 10px;"}
 		    (:b "Important notice: ") "Have a nice day!"
 		    (:br)
-		    (:div {:style "font-size: small;"} ~(webjure/format-date "dd.MM.yyyy hh:mm")))))))))
+		    (:div {:style "font-size: small;"} ~(format-date "dd.MM.yyyy hh:mm")))))))))
 
 
-(webjure/publish index "/index")
+(publish index "/index")
 
 (defn format-map-as-table [keylabel valuelabel themap]
   `(:table
@@ -52,27 +63,27 @@
 		       ))
 	   values)))
 
-(defn info [method req resp]
-  (. resp (setContentType "text/html"))
-  (webjure/html-format
-   (webjure/response-writer resp)
+(defn info []
+  (. *response* (setContentType "text/html"))
+  (html-format
+   (response-writer)
    
    `(:html 
      (:body
       (:h3 "Request headers")
-      ~(format-map-as-table "Name" "Values" (webjure/request-headers req))
+      ~(format-map-as-table "Name" "Values" (request-headers))
       (:br)
       
       (:h3 "Path info")
-      (:p ~(webjure/request-path req))))))
+      (:p ~(request-path))))))
 
-(webjure/publish info "/info*")
+(publish info "/info*")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; db test using derby tours
 ;;
 
-(webjure/require "sql")
+(require "sql")
 
 (def *db* nil)
 (defn connect-to-db [location]
@@ -82,10 +93,10 @@
 	(def *db* (sql/connect (strcat "jdbc:derby:" location)))
 	*db*)))
 
-(defn dbtest-ask-location [resp]
-  (. resp (setContentType "text/html"))
-  (webjure/html-format
-   (webjure/response-writer resp)
+(defn dbtest-ask-location []
+  (. *response* (setContentType "text/html"))
+  (html-format
+   (response-writer)
    `(:html
      (:body
       (:form {:action "http://localhost:8080/webjure/dbtest" :method "POST"}
@@ -95,15 +106,15 @@
 	     (:br)
 	     (:input {:type "submit" :value "Go!"}))))))
 
-(defn dbtest [m req resp]
-  (let [loc (. req (getParameter "db"))]
+(defn dbtest []
+  (let [loc (. *request* (getParameter "db"))]
     (if loc (connect-to-db loc))
     (if (not *db*)
-      (dbtest-ask-location resp)
+      (dbtest-ask-location)
       (do
-	(. resp (setContentType "text/html"))
-	(webjure/html-format
-	 (webjure/response-writer resp)
+	(. *response* (setContentType "text/html"))
+	(html-format
+	 (response-writer)
 	 
 	 `(:html
 	   (:body
@@ -114,12 +125,12 @@
 						(strcat "http://localhost:8080/webjure/dbtest-cities?country="
 							(second row)))])))))))))
 
-(defn dbtest-cities [m req resp]
-  (. resp (setContentType "text/html"))
-  (let [country (. req (getParameter "country"))
+(defn dbtest-cities []
+  (. *response* (setContentType "text/html"))
+  (let [country (. *request* (getParameter "country"))
 	cities (sql/query *db* "SELECT * FROM cities WHERE country_iso_code=?" country)]
-    (webjure/html-format
-     (webjure/response-writer resp)
+    (html-format
+     (response-writer)
 
      `(:html
        (:body
@@ -128,8 +139,8 @@
        (:br)
        (:a {:href "http://localhost:8080/webjure/dbtest"} "&laquo; back to countries")))))
        
-(webjure/publish dbtest "/dbtest")
-(webjure/publish dbtest-cities "/dbtest-cities")
+(publish dbtest "/dbtest")
+(publish dbtest-cities "/dbtest-cities")
 
 ;;;;;;;;;;;;;
 ;; AJAX REPL
@@ -181,9 +192,9 @@
       "window.onload = read;"))
 
 ;; The main page
-(defn ajaxrepl [m req resp]
-  (webjure/html-format
-   (webjure/response-writer resp)
+(defn ajaxrepl []
+  (html-format
+   (response-writer)
    
    `(:html
      (:head (:title "Webjure AJAX REPL")
@@ -201,11 +212,11 @@
       (:form ;{:onsubmit "return write();"}
 	     (:textarea {:onkeypress "keyHandler(event)" :id "replin" :style "width: 600px; height: 70px;"} ""))))))
 
-(webjure/publish ajaxrepl "/ajaxrepl")
+(publish ajaxrepl "/ajaxrepl")
 
 
-(defn ensure-ajax-queue [req]
-  (let [session (. req (getSession))
+(defn ensure-ajax-queue []
+  (let [session (. *request* (getSession))
 	queue (. session (getAttribute "ajaxrepl"))]
     (if queue
       queue
@@ -213,24 +224,24 @@
       ;; Create and store in session
       (let [queue (new java.util.concurrent.ArrayBlockingQueue 5)]
 	(. session (setAttribute "ajaxrepl" queue))
-	(ensure-ajax-queue req)))))
+	(ensure-ajax-queue)))))
 
 
-(defn ajaxrepl-out [m req resp]
-  (let [queue (ensure-ajax-queue req) 
+(defn ajaxrepl-out []
+  (let [queue (ensure-ajax-queue) 
 	value (. queue (poll 1000 (. java.util.concurrent.TimeUnit MILLISECONDS)))]
-    (webjure/send-output resp "text/plain"  
-			 (if (nil? value) ""
-			     (binding [clojure/*out* (new java.io.StringWriter)]
-			       (pr (. webjure.servlet.WebjureServlet (eval value)))
-			       (str *out*))))))
-(webjure/publish ajaxrepl-out "/ajaxrepl-out")
+    (send-output "text/plain"  
+		 (if (nil? value) ""
+		     (binding [clojure/*out* (new java.io.StringWriter)]
+		       (pr (. webjure.servlet.WebjureServlet (eval value)))
+		       (str *out*))))))
+(publish ajaxrepl-out "/ajaxrepl-out")
 
-(defn ajaxrepl-in [m req resp]
-  (let [queue (ensure-ajax-queue req)]
-    (. queue (put (webjure/slurp-post-data req)))
+(defn ajaxrepl-in []
+  (let [queue (ensure-ajax-queue)]
+    (. queue (put (slurp-post-data)))
     (scan queue)
-    (webjure/send-output resp "text/plain" (str queue))))
-(webjure/publish ajaxrepl-in "/ajaxrepl-in")
+    (send-output "text/plain" (str queue))))
+(publish ajaxrepl-in "/ajaxrepl-in")
 
   

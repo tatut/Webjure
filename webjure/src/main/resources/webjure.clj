@@ -1,6 +1,15 @@
 (in-namespace 'webjure)
 
 
+;;;;;;;;;;;;;;;;;;;;;;
+;; Global vars 
+
+;; The *request* and *response* vars are bound to the HttpServletRequest
+;; and HttpServletResponse of the servlet request that is currently being handled
+(def #^javax.servlet.http.HttpServletRequest *request*) 
+(def #^javax.servlet.http.HttpServletResponse *response*) 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Module require functionality
 
@@ -66,20 +75,24 @@
       (recur (cons (. en (nextElement)) acc)))))
 
 
-(defn request-path [#^javax.servlet.http.HttpServletRequest request]
-  (. request (getPathInfo)))
+(defn request-path 
+  ([] (request-path *request*))
+  ([#^javax.servlet.http.HttpServletRequest request] (. request (getPathInfo))))
 
-(defn response-writer [#^javax.servlet.http.HttpServletResponse response]
-  (. response (getWriter)))
+(defn response-writer 
+  ([] (response-writer *response*))
+  ([#^javax.servlet.http.HttpServletResponse response] (. response (getWriter))))
 
-(defn request-headers [#^javax.servlet.http.HttpServletRequest request]
-  (loop [acc {} 
-	 header-names (enumeration->list (. request (getHeaderNames)))]
-    (if (eql? nil header-names)
-      acc
-      (let [name (first header-names)]
-	(recur (assoc acc name (enumeration->list (. request (getHeaders name))))
-	       (rest header-names))))))
+(defn request-headers 
+  ([] (request-headers *request*))
+  ([#^javax.servlet.http.HttpServletRequest request]
+   (loop [acc {} 
+	      header-names (enumeration->list (. request (getHeaderNames)))]
+     (if (eql? nil header-names)
+       acc
+       (let [name (first header-names)]
+	 (recur (assoc acc name (enumeration->list (. request (getHeaders name))))
+		(rest header-names)))))))
 
 	 
     
@@ -89,46 +102,49 @@
 ;;     ~@body))
 
 
-(defn send-error [#^javax.servlet.http.HttpServletResponse response code message]
-  (. response (sendError code message)))
+(defn send-error 
+  ([code message] (send-error *response* code message))
+  ([#^javax.servlet.http.HttpServletResponse response code message]
+   (. response (sendError code message))))
 
 
 ;; The main dispatch function. This is called from WebjureServlet
 (defn dispatch [#^String method 
 		#^javax.servlet.http.HttpServletRequest request 
 		#^javax.servlet.http.HttpServletResponse response]
-
-  (let [handler (first (find-handler (request-path request)))]
-    (if (eql? nil handler)
-      ;; No handler found, give a 404
-      (send-error response 404 
-		  (strcat "No matching handler found for path: " (request-path request)))
-      
-      ;; Run the handler
-      (apply handler (list method request response)))))
+  (binding [*request* request
+	    *response* response]
+    (let [handler (first (find-handler (request-path request)))]
+      (if (eql? nil handler)
+	;; No handler found, give a 404
+	;; PENDING: Add 404-handler support (a special dispatch url, like :default)
+	(send-error 404 (strcat "No matching handler found for path: " (request-path request)))
+	
+	;; Run the handler
+	(handler)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Useful code for webjure apps
 
-(defn send-output [#^javax.servlet.http.HttpServletResponse response #^String content-type #^String content]
-  (. response (setContentType content-type))
-  (. (. response (getWriter)) (append content)))
+(defn send-output 
+  ([content-type content] (send-output *response* content-type content))
+  ([#^javax.servlet.http.HttpServletResponse response #^String content-type #^String content]
+   (. response (setContentType content-type))
+   (. (. response (getWriter)) (append content))))
 
-(defn slurp-post-data [#^javax.servlet.http.HttpServletRequest request]
-  (let [sb (new StringBuilder)
-	in (new java.io.BufferedReader (new java.io.InputStreamReader (. request (getInputStream))))]
-    (loop [ch (. in (read))]
-      (if (< ch 0)
-	(. sb (toString))
-	(do
-	  (. sb (append (char ch)))
-	  (recur (. in (read))))))))
-
-(defn class [name]
-  (. Class (forName name)))
-
-
+(defn slurp-post-data 
+  ([] (slurp-post-data *request*))
+  ([#^javax.servlet.http.HttpServletRequest request]
+   (let [sb (new StringBuilder)
+	    in (new java.io.BufferedReader (new java.io.InputStreamReader (. request (getInputStream))))]
+     (loop [ch (. in (read))]
+       (if (< ch 0)
+	 (. sb (toString))
+	 (do
+	   (. sb (append (char ch)))
+	   (recur (. in (read)))))))))
+  
 
 (defn is-map? [m] (instance? m clojure.lang.Associative))
 (defn is-seq? [s] (instance? s clojure.lang.ISeq))
@@ -177,7 +193,4 @@
 (defn format-date
   ([#^String fmt #^java.util.Date date] (. (new java.text.SimpleDateFormat fmt) (format date)))
   ([#^String fmt] (. (new java.text.SimpleDateFormat fmt) (format (new java.util.Date)))))
-
-
-
 

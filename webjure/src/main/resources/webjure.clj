@@ -45,6 +45,8 @@
 
 ;; This is called to register a handler
 (defn publish [fn url-pattern]
+  (if (not (instance? fn clojure.lang.IFn))
+    (throw (new java.lang.IllegalArgumentException "First argument must be function")))
   (def *handlers*
        (cons [fn url-pattern]
 	     *handlers*)))

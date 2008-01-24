@@ -159,24 +159,21 @@ public class WebjureServlet extends HttpServlet {
 			String[] addrAndPort = shell.split(":");
 		
 			try {
-			shellServerSocket = new ServerSocket();
-			shellServerSocket.bind(new InetSocketAddress(Inet4Address.getByName(addrAndPort[0]), Integer.parseInt(addrAndPort[1])));
-			new Thread(
-					new Runnable() {					
-						public void run() {
+				shellServerSocket = new ServerSocket();
+				shellServerSocket.bind(new InetSocketAddress(Inet4Address.getByName(addrAndPort[0]), Integer.parseInt(addrAndPort[1])));
+				new Thread(new Runnable() {					
+					public void run() {
+						for(;;) {
 							try {
-							Socket s = shellServerSocket.accept();
-							new Thread(
-									new Shell(
-											new BufferedReader(new InputStreamReader(s.getInputStream())),
-											new BufferedWriter(new OutputStreamWriter(s.getOutputStream())),
-											WebjureServlet.class.getClassLoader())
-									).start();
+								Socket s = shellServerSocket.accept();
+								new Thread(new Shell(
+										new BufferedReader(new InputStreamReader(s.getInputStream())),
+										new BufferedWriter(new OutputStreamWriter(s.getOutputStream())),
+										WebjureServlet.class.getClassLoader())).start();
 							} catch(IOException ioe) {
 								log("Unable create shell for incoming connection.", ioe);
 							}
-						}					
-					}).start();
+						}}}).start();
 			} catch(IOException ioe) {
 				log("Unable to start shell.", ioe);
 			}

@@ -1,46 +1,42 @@
 
 ;; Demos to be placed here
 
-(in-namespace 'webjure-demos)
+(in-ns 'webjure-demos)
+(clojure/refer 'clojure)
 
-(refer '(webjure
-	 *request* *response*
-	 request-headers request-path
-	 require
+(refer 'webjure :only '(
+	 defh
+	 format-date
 	 html-format
-	 response-writer
 	 publish
-	 send-output
-	 slurp-post-data
-	 format-date))
+	 *request* *response* request-headers request-path require response-writer	 
+	 session-get
+	 send-output slurp-post-data))
+
+(defn url [& u]
+  (reduce strcat (webjure/base-url) u))
 
 
-(defn index []
-  (. *response* (setContentType "text/html")) ;; for links browser
-  (html-format
-   (response-writer)
-   
-   (let [url (fn [x] (strcat "http://localhost:8080/webjure/" x))]
-     `(:html 
-       (:body 
-	(:h3 "Webjure, a web framework like thing.")
-	(:p "Welcome to webjure, a clojure web framework. Not much is done yet, but feel free "
-	    "to look at the demos.")
+(defh "/index" [] {:output :html}
+  (let [base-url (webjure/base-url)]
+    `(:html 
+      (:body 
+       (:h3 "Webjure, a web framework like thing.")
+       (:p "Welcome to webjure, a clojure web framework. Not much is done yet, but feel free "
+	   "to look at the demos.")
 	(:ul
-	 (:li (:a {:href ~(url "index")} "This page, a simple sexp markup page"))
-	 (:li (:a {:href ~(url "info")} "Dump request info"))
-	 (:li (:a {:href ~(url "dbtest")} "Database test"))
-	 (:li (:a {:href ~(url "ajaxrepl")} "an AJAX REPL")))
+	 (:li (:a {:href ~(url "/index")} "This page, a simple sexp markup page"))
+	 (:li (:a {:href ~(url "/info")} "Dump request info"))
+	 (:li (:a {:href ~(url "/dbtest")} "Database test"))
+	 (:li (:a {:href ~(url "/ajaxrepl")} "an AJAX REPL")))
 	
 
 	(:div {:style "position: relative; left: 50%;"}
 	      (:div {:style "text-align: center; width: 300px; position: absolute; left: -150; border: dotted black 2px; background-color: yellow; padding: 10px;"}
-		    (:b "Important notice: ") "Have a nice day!"
+		    (:b "Important notice: ") "Have a nice and RESTful day!"
 		    (:br)
-		    (:div {:style "font-size: small;"} ~(format-date "dd.MM.yyyy hh:mm")))))))))
+		    (:div {:style "font-size: small;"} ~(format-date "dd.MM.yyyy hh:mm"))))))))
 
-
-(publish index "/index")
 
 (defn format-map-as-table [keylabel valuelabel themap]
   `(:table
@@ -63,21 +59,16 @@
 		       ))
 	   values)))
 
-(defn info []
-  (. *response* (setContentType "text/html"))
-  (html-format
-   (response-writer)
-   
-   `(:html 
-     (:body
-      (:h3 "Request headers")
-      ~(format-map-as-table "Name" "Values" (request-headers))
-      (:br)
-      
-      (:h3 "Path info")
-      (:p ~(request-path))))))
+(defh "/info*" [] {:output :html}
+  `(:html 
+    (:body
+     (:h3 "Request headers")
+     ~(format-map-as-table "Name" "Values" (request-headers))
+     (:br)
+     
+     (:h3 "Path info")
+     (:p ~(request-path)))))
 
-(publish info "/info*")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; db test using derby tours
@@ -85,31 +76,24 @@
 
 (require "sql")
 
-(def *db* nil)
 (defn connect-to-db [location]
-  (if *db*
-    *db*
-    (do (sql/register-driver "org.apache.derby.jdbc.EmbeddedDriver")
-	(def *db* (sql/connect (strcat "jdbc:derby:" location)))
-	*db*)))
+  (do (sql/register-driver "org.apache.derby.jdbc.EmbeddedDriver")
+      (sql/connect (strcat "jdbc:derby:" location))))
 
 (defn dbtest-ask-location []
-  (. *response* (setContentType "text/html"))
-  (html-format
-   (response-writer)
-   `(:html
-     (:body
-      (:form {:action "http://localhost:8080/webjure/dbtest" :method "POST"}
-	     (:b "Where is the derby tours db located?")
-	     (:input {:type "text" :name "db" :size "80"})
-	     "(example: /Users/tadex/software/derby/demo/databases/toursdb)"
-	     (:br)
-	     (:input {:type "submit" :value "Go!"}))))))
+  `(:html
+    (:body
+     (:form {:action ~(url "/dbtest") :method "POST"}
+	    (:b "Where is the derby tours db located?")
+	    (:input {:type "text" :name "db" :size "80"})
+	    "(example: /Users/tadex/software/derby/demo/databases/toursdb)"
+	    (:br)
+	    (:input {:type "submit" :value "Go!"})))))
 
-(defn dbtest []
-  (let [loc (. *request* (getParameter "db"))]
-    (if loc (connect-to-db loc))
-    (if (not *db*)
+(defh "/dbtest" [loc {:name "db" :optional true}] {:output :html}
+  (let [db (or (session-get "db")
+	       (and loc (connect-to-db loc)))]
+    (if db
       (dbtest-ask-location)
       (do
 	(. *response* (setContentType "text/html"))
@@ -118,29 +102,28 @@
 	 
 	 `(:html
 	   (:body
-	    ~(let [results (sql/query *db* "SELECT c.*, (SELECT COUNT(*) FROM cities WHERE country_iso_code=c.country_iso_code) as cities FROM countries c ORDER BY country ASC")
+	    ~(let [results (sql/query db "SELECT c.*, (SELECT COUNT(*) FROM cities WHERE country_iso_code=c.country_iso_code) as cities FROM countries c ORDER BY country ASC")
 			   columns (:columns (meta results))]
 	       (format-table (map first columns) results
 			     ["List cities" (fn [row]
-						(strcat "http://localhost:8080/webjure/dbtest-cities?country="
-							(second row)))])))))))))
+						(url "/dbtest-cities?country=" (second row)))])))))))))
 
-(defn dbtest-cities []
-  (. *response* (setContentType "text/html"))
-  (let [country (. *request* (getParameter "country"))
-	cities (sql/query *db* "SELECT * FROM cities WHERE country_iso_code=?" country)]
-    (html-format
-     (response-writer)
+;; (defn dbtest-cities []
+;;   (. *response* (setContentType "text/html"))
+;;   (let [country (. *request* (getParameter "country"))
+;; 	cities (sql/query db "SELECT * FROM cities WHERE country_iso_code=?" country)]
+;;     (html-format
+;;      (response-writer)
 
-     `(:html
-       (:body
-	~(format-table (map first (:columns (meta cities))) cities)
-	(:b ~(strcat (str (:rows (meta cities))) " cities.")))
-       (:br)
-       (:a {:href "http://localhost:8080/webjure/dbtest"} "&laquo; back to countries")))))
+;;      `(:html
+;;        (:body
+;; 	~(format-table (map first (:columns (meta cities))) cities)
+;; 	(:b ~(strcat (str (:rows (meta cities))) " cities.")))
+;;        (:br)
+;;        (:a {:href ~(url "/dbtest")} "&laquo; back to countries")))))
        
-(publish dbtest "/dbtest")
-(publish dbtest-cities "/dbtest-cities")
+;; (publish dbtest "/dbtest")
+;; (publish dbtest-cities "/dbtest-cities")
 
 ;;;;;;;;;;;;;
 ;; AJAX REPL
@@ -215,33 +198,72 @@
 (publish ajaxrepl "/ajaxrepl")
 
 
-(defn ensure-ajax-queue []
-  (let [session (. *request* (getSession))
-	queue (. session (getAttribute "ajaxrepl"))]
-    (if queue
-      queue
-      
+;;;;; WORKING POLLING VERSION
+;; (defn ensure-ajax-queue []
+;;   (let [session (. *request* (getSession))
+;; 	queue (. session (getAttribute "ajaxrepl"))]
+;;     (if queue
+;;       queue
+;;       ;; Create and store in session
+;;       (let [queue (new java.util.concurrent.ArrayBlockingQueue 5)]
+;; 	(. session (setAttribute "ajaxrepl" queue))
+;; 	(ensure-ajax-queue)))))
+
+;; (defn ajaxrepl-out []
+;;   (let [queue (ensure-ajax-queue) 
+;; 	value (. queue (poll 1000 (. java.util.concurrent.TimeUnit MILLISECONDS)))]
+;;     (send-output "text/plain"  
+;; 		 (if (nil? value) ""
+;; 		     (binding [clojure/*out* (new java.io.StringWriter)]
+;; 		       (pr (. webjure.servlet.WebjureServlet (eval value)))
+;; 		       (str *out*))))))
+;; (publish ajaxrepl-out "/ajaxrepl-out")
+
+;; (defn ajaxrepl-in []
+;;   (let [queue (ensure-ajax-queue)]
+;;     (. queue (put (slurp-post-data)))
+;;     (scan queue)
+;;     (send-output "text/plain" (str queue))))
+;; (publish ajaxrepl-in "/ajaxrepl-in")
+
+;;;;;;; PIPE VERSION
+(defn ensure-ajax-io [req]
+  (let [session (. req (getSession))
+	initialized (. session (getAttribute "ajaxrepl"))]
+    (if initialized
+      [(. session (getAttribute "ajaxrepl-in")) 
+       (. session (getAttribute "ajaxrepl-out"))]
+
       ;; Create and store in session
-      (let [queue (new java.util.concurrent.ArrayBlockingQueue 5)]
-	(. session (setAttribute "ajaxrepl" queue))
-	(ensure-ajax-queue)))))
+      (let [out (new java.io.PipedWriter)
+	    in (new java.io.PipedReader)];(new java.io.PushbackReader (new java.io.PipedReader out))]
+	(. in (connect out))
+	(. session (setAttribute "ajaxrepl-in" in))
+	(. session (setAttribute "ajaxrepl-out" out))
+	(. session (setAttribute "ajaxrepl" true))
+	(ensure-ajax-io req)))))
 
+;; Return new content since last update
+;; if there is no new content, wait for some
 
-(defn ajaxrepl-out []
-  (let [queue (ensure-ajax-queue) 
-	value (. queue (poll 1000 (. java.util.concurrent.TimeUnit MILLISECONDS)))]
-    (send-output "text/plain"  
-		 (if (nil? value) ""
-		     (binding [clojure/*out* (new java.io.StringWriter)]
-		       (pr (. webjure.servlet.WebjureServlet (eval value)))
-		       (str *out*))))))
-(publish ajaxrepl-out "/ajaxrepl-out")
+;(defn ajaxrepl-out [m req resp]
+;  (let [in (first (ensure-ajax-io req))]
+;    (webjure/send-output resp "text/plain"
+;			 (str (eval (read in))))))
+(defn ajaxrepl-out [m req resp]
+  (let [in (first (ensure-ajax-io req))]
+    (. Thread (sleep 5000))
+    (webjure/send-output resp "text/plain"
+			 (str in))));(str (. in (read))))))
 
-(defn ajaxrepl-in []
-  (let [queue (ensure-ajax-queue)]
-    (. queue (put (slurp-post-data)))
-    (scan queue)
-    (send-output "text/plain" (str queue))))
-(publish ajaxrepl-in "/ajaxrepl-in")
+(webjure/publish ajaxrepl-out "/ajaxrepl-out")
 
+(defn ajaxrepl-in [m req resp]
+  (let [out (second (ensure-ajax-io req))]
+    (. out (append (webjure/slurp-post-data req)))
+    (. out (flush))
+    (webjure/send-output resp "text/plain" (str out))))
+(webjure/publish ajaxrepl-in "/ajaxrepl-in")
+
+		      
   

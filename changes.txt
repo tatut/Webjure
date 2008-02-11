@@ -1,0 +1,53 @@
+
+2008-01-27:
+
+  Refactored all demos to use the new functionalities.
+
+  ----
+  Added (base-url) which determines the application base url from the request.
+
+2008-01-26:
+
+  sql.clj:
+  Added (update con update-clause ...update-args...).
+  Added (with-tx con func) with commit on success and rollback on SQLException.
+
+  ----
+  Added automagic handler definition macro (defh url request-bindings options ...body...).
+  url is the url-pattern to publish the handler to.
+  request-bindings is a sequence as defined by request-bind.
+  options is a map of options (may be nil), currently only supported is {:type :html} which
+  automagically send the last evaluated value of body as an html output (see html-format)
+  
+  ----
+  Added ability to call application init fn when WebjureServlet has been initialized.
+  The fn is specified as 'init' parameter in the servlet config using the full name (example: webjure-demos/init).
+
+  ----
+  Added working version of xmlparse.clj which provides declarative DOM tree parsing and
+  value extraction. This is mostly a rewrite of my old JScheme code that did the same (more or less).
+  Also a simple atom v1.0 feed parser based on the former (feed.clj). 
+
+  ---- 
+  Added (session-get attribute initial-value?) which gets the given attribute value from session.
+  If the optional initial-value is provided and the attribute has no value in the session,
+  the initial-value is stored in the session and returned.
+
+  ----
+  Added (request-bind [bindings] ...body...) which binds GET/POST parameters to variables.
+  bindings = binding 
+           | binding bindings
+
+  binding = var "name"
+          | var {...options...} 
+ 
+  Currently available options are: 
+    :name (the request parameter name, required)
+    :multiple (if true, the value is returned as a seq)
+    :validator (a form which returns a validated value from the request parameter value)
+   
+
+2008-01-23
+
+  Removed handler parameters. Instead *request* and *response* globals are bound during 
+  handler calls.

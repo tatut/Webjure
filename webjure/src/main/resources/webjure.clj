@@ -1,4 +1,5 @@
-(in-namespace 'webjure)
+(in-ns 'webjure)
+(clojure/refer 'clojure)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -14,7 +15,7 @@
 ;; Module require functionality
 
 (defn require [#^String module]
-  (. webjure.servlet.WebjureServlet (require module)))
+  (. webjure.Webjure (require module)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -45,7 +46,7 @@
 
 ;; This is called to register a handler
 (defn publish [fn url-pattern]
-  (if (not (instance? fn clojure.lang.IFn))
+  (if (not (instance? clojure.lang.IFn fn))
     (throw (new java.lang.IllegalArgumentException "First argument must be function")))
   (def *handlers*
        (cons [fn url-pattern]
@@ -57,7 +58,7 @@
      (and (ends-with? url-pattern "*")
 	  (starts-with? pattern (substr url-pattern 0 (- (strlen url-pattern) 1)))
 	  true)
-     (and (eql? pattern url-pattern)))))
+     (and (= pattern url-pattern)))))
 
 (defn find-handler [url-pattern]
   (let [matching-handlers (filter (fn [handler] (handler-matches? handler url-pattern)) *handlers*)
@@ -90,18 +91,82 @@
   ([#^javax.servlet.http.HttpServletRequest request]
    (loop [acc {} 
 	      header-names (enumeration->list (. request (getHeaderNames)))]
-     (if (eql? nil header-names)
+     (if (= nil header-names)
        acc
        (let [name (first header-names)]
 	 (recur (assoc acc name (enumeration->list (. request (getHeaders name))))
 		(rest header-names)))))))
 
-	 
-    
-;;(defmacro request-bind [bindings & body]
-;;  `(let [~@(reduce append
-;;		   (map create-request-binding bindings))]
-;;     ~@body))
+
+;; Dynamically calculate and return the app baseurl
+;; based on the current request
+(defn base-url []
+  (strcat (. *request* (getScheme))
+	  "://"
+	  (. *request* (getServerName))
+	  (let [port (. *request* (getServerPort))]
+	    (if (not (or (== port 80) (== port 443)))
+	      (strcat ":" port)
+	      ""))
+	  (. *request* (getContextPath))))
+
+
+(defn request-parameter [#^String name]
+  (. *request* (getParameter name)))
+(defn multi-request-parameter [#^String name]
+  (seq (. *request* (getParameterValues name))))
+
+
+(defn generate-request-binding [sym accessor]
+  (if (instance? java.lang.String accessor)
+    `[~sym (request-parameter ~accessor)]
+    (let [multi (:multiple accessor)
+	  name (:name accessor)
+	  validator (or (:validator accessor) 'identity)]
+      (if multi
+	`[~sym (map ~validator (multi-request-parameter ~name))]
+	`[~sym (~validator (request-parameter ~name))]))))
+
+;; Bind request parameters (GET/POST) to variables
+;; A binding is a symbol and an access definition.
+;; The access definition can be a string or a map containing
+;; options. If the definition is a string the named parameter
+;; is just returned as a string.
+;; For option map access definitions, the following option
+;; keys can be used: :name (the request param name, required),
+;; :multiple (if true the value is a seq of values, defaults to no) and
+;; :validator (a form that returns the validated value of the parameter value)
+;; 
+(defmacro request-bind [bindings & body]
+  `(let [~@(loop [forms nil
+                  splits (split-at 2 bindings)]
+	     (let [binding (first splits)]
+	       (if (nil? binding)
+		 forms
+		 (recur 
+		  (concat (apply generate-request-binding binding) forms)
+		  (split-at 2 (second splits))))))] 
+     ~@body))
+
+  
+;; Fetch the value of a session attribute
+;; if initial-value is specified and the given
+;; attribute does not exist in the session, 
+;; the initial-value stored in the session and
+;; returned. If initial-value is an IFn then
+;; it is invoked to produce the value to store.
+(defn session-get 
+  ([attribute] (. (. *request* (getSession)) (getAttribute attribute)))
+  ([attribute initial-value]
+   (let [val (session-get attribute)]
+     (if (nil? val)
+       (let [new-value (or (and (instance? clojure.lang.IFn initial-value)
+				(initial-value))
+			   initial-value)]
+	 (. (. *request* (getSession)) (setAttribute attribute new-value))
+	 new-value)
+       val))))
+
 
 
 (defn send-error 
@@ -117,7 +182,7 @@
   (binding [*request* request
 	    *response* response]
     (let [handler (first (find-handler (request-path request)))]
-      (if (eql? nil handler)
+      (if (= nil handler)
 	;; No handler found, give a 404
 	;; PENDING: Add 404-handler support (a special dispatch url, like :default)
 	(send-error 404 (strcat "No matching handler found for path: " (request-path request)))
@@ -148,9 +213,9 @@
 	   (recur (. in (read)))))))))
   
 
-(defn is-map? [m] (instance? m clojure.lang.Associative))
-(defn is-seq? [s] (instance? s clojure.lang.ISeq))
-(defn is-string? [s] (instance? s java.lang.String))
+(defn is-map? [m] (instance? clojure.lang.Associative m))
+(defn is-seq? [s] (instance? clojure.lang.ISeq s))
+(defn is-string? [s] (instance? java.lang.String s))
 
 
 (defn html-format-default [out obj]
@@ -162,7 +227,7 @@
 		 (and (is-string? obj) :string)
 		 (. obj (getClass)))
 	formatter (get +type-dispatch-table+ type)]
-    (if (eql? nil formatter)
+    (if (= nil formatter)
       ;;(html-format-default out obj)
       (throw (new java.lang.IllegalArgumentException (strcat "No formatter for type: " (str type))))
       (apply formatter (list out obj)))))
@@ -176,7 +241,7 @@
     (if (is-map? attrs)
       (doseq kw (keys attrs)
 	(append out " " (name kw) "=\"" (str (get attrs kw)) "\"")))
-    (if (eql? nil content)
+    (if (= nil content)
       (append out " />")
       (do	
 	(append out ">")
@@ -196,3 +261,20 @@
   ([#^String fmt #^java.util.Date date] (. (new java.text.SimpleDateFormat fmt) (format date)))
   ([#^String fmt] (. (new java.text.SimpleDateFormat fmt) (format (new java.util.Date)))))
 
+
+;; Define a handler function
+;; options is a map of automagic behaviour.
+;; currently supported is {:output <type>} (<type> can be :html)
+;; that automatically sends the return value as a response 
+(defmacro defh [url request-bindings options & body]
+  `(publish (fn []
+		(request-bind ~request-bindings
+			      ~@(if (= :html (:output options))
+				  `(do
+				     (. *response* (setContentType "text/html"))
+				     (html-format (response-writer)
+						 (do ~@body)))
+				  body)))
+	    ~url))
+
+  

@@ -101,12 +101,12 @@
 ;; Dynamically calculate and return the app baseurl
 ;; based on the current request
 (defn base-url []
-  (strcat (. *request* (getScheme))
+  (str (. *request* (getScheme))
 	  "://"
 	  (. *request* (getServerName))
 	  (let [port (. *request* (getServerPort))]
 	    (if (not (or (== port 80) (== port 443)))
-	      (strcat ":" port)
+	      (str ":" port)
 	      ""))
 	  (. *request* (getContextPath))))
 
@@ -185,7 +185,7 @@
       (if (= nil handler)
 	;; No handler found, give a 404
 	;; PENDING: Add 404-handler support (a special dispatch url, like :default)
-	(send-error 404 (strcat "No matching handler found for path: " (request-path request)))
+	(send-error 404 (str "No matching handler found for path: " (request-path request)))
 	
 	;; Run the handler
 	(handler)))))
@@ -229,7 +229,7 @@
 	formatter (get +type-dispatch-table+ type)]
     (if (= nil formatter)
       ;;(html-format-default out obj)
-      (throw (new java.lang.IllegalArgumentException (strcat "No formatter for type: " (str type))))
+      (throw (new java.lang.IllegalArgumentException (str "No formatter for type: " (str type))))
       (apply formatter (list out obj)))))
 
 

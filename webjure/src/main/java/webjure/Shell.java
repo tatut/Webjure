@@ -13,6 +13,7 @@ import clojure.lang.RT;
 import clojure.lang.Var;
 import clojure.lang.IFn;
 import clojure.lang.Symbol;
+import clojure.lang.Namespace;
 
 public class Shell implements Runnable {
 
@@ -58,15 +59,12 @@ public class Shell implements Runnable {
 			PushbackReader read = new PushbackReader(in);
 			Object EOF = new Object();
 			
-			Var NS_REFERS = getRTField("NS_REFERS"),
-				NS_IMPORTS = getRTField("NS_IMPORTS"),
-				CURRENT_NS_SYM = getRTField("CURRENT_NS_SYM"),
-				WARN_ON_REFLECTION = getRTField("WARN_ON_REFLECTION");
+			Var CURRENT_NS = getRTField("CURRENT_NS"),
+			    WARN_ON_REFLECTION = getRTField("WARN_ON_REFLECTION");
 			
 			Var.pushThreadBindings(
-					RT.map(NS_REFERS, NS_REFERS.get(),
-					       NS_IMPORTS, NS_IMPORTS.get(),
-					       CURRENT_NS_SYM, CURRENT_NS_SYM.get(),
+					RT.map(
+					       CURRENT_NS, CURRENT_NS.get(),
 					       WARN_ON_REFLECTION, WARN_ON_REFLECTION.get(),
 					       Compiler.SOURCE, "REPL"
 					));
@@ -79,7 +77,7 @@ public class Shell implements Runnable {
 			
 			while(active) {
 
-				out.write(CURRENT_NS_SYM.get()+"=> ");
+                            out.write(((Namespace)CURRENT_NS.get()).name+"=> ");
 				out.flush();
 
 				try {

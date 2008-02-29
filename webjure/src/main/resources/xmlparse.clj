@@ -61,6 +61,8 @@
 ;;;   ["one" "two" "three"]
 
 
+(in-ns 'xmlparse)
+(clojure/refer 'clojure)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; DOM utilities and accessors ;;
@@ -70,18 +72,18 @@
 (defn type-of [#^org.w3c.dom.Node node]
   (let [node-type (. node (getNodeType))]
     (cond 
-     (eql? node-type (. org.w3c.dom.Node ELEMENT_NODE)) :element
-     (eql? node-type (. org.w3c.dom.Node ATTRIBUTE_NODE)) :attribute
-     (eql? node-type (. org.w3c.dom.Node TEXT_NODE))  :text
-     (eql? node-type (. org.w3c.dom.Node CDATA_SECTION_NODE)) :cdata-section
-     (eql? node-type (. org.w3c.dom.Node ENTITY_REFERENCE_NODE)) :entity-reference
-     (eql? node-type (. org.w3c.dom.Node ENTITY_NODE)) :entity
-     (eql? node-type (. org.w3c.dom.Node PROCESSING_INSTRUCTION_NODE)) :processing-instruction
-     (eql? node-type (. org.w3c.dom.Node COMMENT_NODE)) :comment
-     (eql? node-type (. org.w3c.dom.Node DOCUMENT_NODE)) :document
-     (eql? node-type (. org.w3c.dom.Node DOCUMENT_TYPE_NODE)) :document-type
-     (eql? node-type (. org.w3c.dom.Node DOCUMENT_FRAGMENT_NODE)) :document-fragment
-     (eql? node-type (. org.w3c.dom.Node NOTATION_NODE)) :notation)))
+     (= node-type (. org.w3c.dom.Node ELEMENT_NODE)) :element
+     (= node-type (. org.w3c.dom.Node ATTRIBUTE_NODE)) :attribute
+     (= node-type (. org.w3c.dom.Node TEXT_NODE))  :text
+     (= node-type (. org.w3c.dom.Node CDATA_SECTION_NODE)) :cdata-section
+     (= node-type (. org.w3c.dom.Node ENTITY_REFERENCE_NODE)) :entity-reference
+     (= node-type (. org.w3c.dom.Node ENTITY_NODE)) :entity
+     (= node-type (. org.w3c.dom.Node PROCESSING_INSTRUCTION_NODE)) :processing-instruction
+     (= node-type (. org.w3c.dom.Node COMMENT_NODE)) :comment
+     (= node-type (. org.w3c.dom.Node DOCUMENT_NODE)) :document
+     (= node-type (. org.w3c.dom.Node DOCUMENT_TYPE_NODE)) :document-type
+     (= node-type (. org.w3c.dom.Node DOCUMENT_FRAGMENT_NODE)) :document-fragment
+     (= node-type (. org.w3c.dom.Node NOTATION_NODE)) :notation)))
 
 ;; Get the name of given node
 (defn name-of [#^org.w3c.dom.Node node]
@@ -90,9 +92,9 @@
 ;; Check if the given node is an element (optionally check 
 ;; the element name also)
 (defn element? 
-  ([node] (eql? :element (type-of node)))
-  ([node name] (and (eql? :element (type-of node))
-                   (eql? name (name-of node)))))
+  ([node] (= :element (type-of node)))
+  ([node name] (and (= :element (type-of node))
+                   (= name (name-of node)))))
 
 ;; Fetch named attribute of node
 (defn attribute [#^org.w3c.dom.Element node name]
@@ -105,8 +107,11 @@
                  
 ;; Return all children as a list
 (defn children [#^org.w3c.dom.Node parent]
-  (let [all-children (. parent (getChildNodes))]
-    (lazy-child all-children 0 (- (. all-children (getLength)) 1))))
+  (let [all-children (. parent (getChildNodes))
+        child-count (. all-children (getLength))]
+    (if (= 0 child-count)
+      []
+      (lazy-child all-children 0 (- child-count 1)))))
 
 
 (defn child-elements [#^org.w3c.dom.Element parent]
@@ -114,20 +119,20 @@
 
 ;; Fetch text content 
 (defn text [#^org.w3c.dom.Element node]
-  (reduce strcat (map (fn [#^org.w3c.dom.CharacterData x] (. x (getData)))
-                      (filter (fn [x] (eql? :text (type-of x))) (children node)))))
+  (reduce str (map (fn [#^org.w3c.dom.CharacterData x] (. x (getData)))
+                   (filter (fn [x] (= :text (type-of x))) (children node)))))
 
 ;;; Load an XML-file and return the DOM tree
 (defn load-dom [file-or-istream]
   (let [builder (. (. javax.xml.parsers.DocumentBuilderFactory (newInstance)) (newDocumentBuilder))]
     (. builder (parse #^java.io.InputStream
-                      (if (instance? file-or-istream java.io.File)
+                      (if (instance? java.io.File file-or-istream)
                         (new java.io.FileInputStream #^java.io.File file-or-istream)
                         file-or-istream)))))
 
 (defn matches? [spec str]
   ;; PENDING: allow xpath style matching of word inside value 
-  (eql? spec str))
+  (= spec str))
 
 ;;; Fetch all child elements with the given name
 (defn child-elements-by-name [#^org.w3c.dom.Element parent name]
@@ -140,13 +145,13 @@
 
 
 (defmacro error [node & items]
-  `[:error ~node (reduce strcat (map str (list ~@items)))])
+  `[:error ~node (reduce str (map str (list ~@items)))])
 
 (defn yield [new-state]
   `[:state ~new-state])
 
 (defn error-state? [state]
-  (eql? :error (first state)))
+  (= :error (first state)))
 
 ;; Run the given sub-parsers on node 
 (defn subs [node current-state parsers]
@@ -174,6 +179,16 @@
     (if (error-state? res)
       res
       (second res))))
+
+;; Parse as a sub-parser, returns a function that takes the
+;; node to parse.
+;; This can be used to change state for sub parsers.
+(defn parse* [new-state & parsers]
+  (fn [node]
+      (let [res (subs node (yield new-state) parsers)]
+        (if (error-state? res)
+          res
+          (second res)))))
 
 
 ;; Evaluate exprs for side-effects, does not change state
@@ -228,7 +243,7 @@
       (if (not (element? parent))
         (error parent "Tried to check attribute on a non-element node")
         
-        (let [attr-value (if (instance? attr-spec java.lang.String) nil (second attr-spec)) 
+        (let [attr-value (if (instance? java.lang.String attr-spec) nil (second attr-spec)) 
               attr-name (or (and attr-value (first attr-spec)) attr-spec)
               attr-node (. #^org.w3c.dom.Element parent (getAttributeNode attr-name))]
           (if (nil? attr-node)

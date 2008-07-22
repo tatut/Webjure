@@ -154,7 +154,7 @@
      "  req = new XMLHttpRequest();"
      "  req.onreadystatechange = replCallback;"
      (str "  req.open('GET', '" (url "/ajaxrepl-out") "', true);")
-     "  req.send();"
+     "  req.send(null);"
      "} "
       
      "function appendContent(txt) {"
@@ -200,6 +200,38 @@
 
 (publish ajaxrepl "/ajaxrepl")
 
+;;; A REPL using Refs 
+
+(defn repl-session []
+  (session-get "repl-messages" (fn [] (ref []))))
+     
+
+
+;; Return new content since last update
+;; if there is no new content, wait for some
+(defn ajaxrepl-out []
+  (let [repl-messages (repl-session)]
+    (dbg repl-messages)
+    (dosync        
+     (let [output (reduce str
+                          (interleave @repl-messages (repeat "\n")))]
+       (dbg "sending: " output)
+       (webjure/send-output "text/plain" output))
+     (ref-set repl-messages []))))
+(webjure/publish ajaxrepl-out "/ajaxrepl-out")
+
+(defn ajaxrepl-eval [str]
+  (eval (read (new java.io.PushbackReader (new java.io.StringReader str)))))
+
+(defn ajaxrepl-in []
+  (dosync
+   (let [repl-messages (repl-session)
+         input (webjure/slurp-post-data)]
+     (alter repl-messages conj (ajaxrepl-eval input))
+     (webjure/send-output "text/plain" "OK"))))
+(webjure/publish ajaxrepl-in "/ajaxrepl-in")
+
+		      
 ;;; Session test
 
 (defh "/session" [] {:output :html}
@@ -214,32 +246,3 @@
         greeting))))
 
 
-;;; A REPL using Refs 
-
-(defn repl-session []
-  (session-get "repl-messages" (fn [] (ref []))))
-     
-
-
-;; Return new content since last update
-;; if there is no new content, wait for some
-(defn ajaxrepl-out []
-  (dosync
-   (let [repl-messages (repl-session)
-         msgs @(repl-session)]
-     (webjure/send-output "text/plain"
-                          (reduce str
-                                  (interleave @msgs (repeat "\n"))))
-     (ref-set repl-messages []))))
-(webjure/publish ajaxrepl-out "/ajaxrepl-out")
-
-(defn ajaxrepl-in []
-  (dosync
-   (let [repl-messages (repl-session)
-         input (webjure/slurp-post-data)]
-     (alter repl-messages conj (eval input))
-     (webjure/send-output "text/plain" "OK"))))
-(webjure/publish ajaxrepl-in "/ajaxrepl-in")
-
-		      
-  

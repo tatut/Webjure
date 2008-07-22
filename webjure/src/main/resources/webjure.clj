@@ -14,7 +14,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Module require functionality
 
-(defn require [#^String module]
+(defn 
+  #^{:doc "Load a Clojure script from Web application resources."}
+  require [#^String module]
   (. webjure.Webjure (require module)))
 
 
@@ -37,12 +39,16 @@
 (defn append [#^java.lang.Appendable out & #^String stuff]
   (doseq thing stuff (. out (append (str thing)))))
 
-(defn urlencode 
+(defn 
+  #^{:doc "URL encode a string."}
+  urlencode 
   ([#^String s] (urlencode s "UTF-8"))
   ([#^String s #^String encoding] 
      (. java.net.URLEncoder (encode s encoding))))
 
-(defn urldecode
+(defn 
+  #^{:doc "Decode an URL encoded string."}
+  urldecode
   ([#^String s] (urldecode s "UTF-8"))
   ([#^String s #^String encoding]
      (. java.net.URLDecoder (decode s encoding))))
@@ -55,14 +61,18 @@
 (def *handlers* (list))
 
 ;; This is called to register a handler
-(defn publish [fn url-pattern]
+(defn 
+  #^{:doc "Publish a handler function for the given URL pattern."}
+  publish [fn url-pattern]
   (if (not (instance? clojure.lang.IFn fn))
     (throw (new java.lang.IllegalArgumentException "First argument must be function")))
   (def *handlers*
        (conj *handlers*
              [fn url-pattern])))
 
-(defn handler-matches? [handler pattern]
+(defn 
+  #^{:private true}
+  handler-matches? [handler pattern]
   (let [url-pattern (second handler)]
     (or
      (and (ends-with? url-pattern "*")
@@ -70,7 +80,9 @@
 	  true)
      (and (= pattern url-pattern)))))
 
-(defn find-handler [url-pattern]
+(defn 
+  #^{:private true}
+  find-handler [url-pattern]
   (let [matching-handlers (filter (fn [handler] (handler-matches? handler url-pattern)) *handlers*)
 	shortest-match    (first (sort-by (fn [handler] (strlen (second handler))) matching-handlers))]
     shortest-match))
@@ -81,18 +93,24 @@
 
 
 ;; Servlets use a lot of old Enumerations, which need to be turned into sequences
-(defn enumeration->list [#^java.util.Enumeration en]
+(defn 
+  #^{:doc "Convert a Java Enumeration into a Clojure sequence."}
+  enumeration->list [#^java.util.Enumeration en]
   (loop [acc (list)]
     (if (not (. en (hasMoreElements)))
       (reverse acc)
       (recur (conj acc (. en (nextElement)))))))
 
 
-(defn request-path 
+(defn 
+  #^{:doc "Returns the request path information (servlet only)"}
+  request-path 
   ([] (request-path *request*))
   ([#^webjure.Request request] (. (. request (getActualRequest)) (getPathInfo))))
 
-(defn response-writer 
+(defn 
+  #^{:doc "Get a Writer object for this response."}
+  response-writer 
   ([] (response-writer *response*))
   ([#^webjure.Response response] (. response (getWriter))))
 
@@ -125,7 +143,9 @@
 	      ""))
 	  (. request (getContextPath)))))
 
-(defn create-servlet-url [#^javax.servlet.HttpServletRequest request path args]
+(defn 
+  #^{:private true}
+  create-servlet-url [#^javax.servlet.HttpServletRequest request path args]
   (str
    (base-url request)
    path
@@ -139,7 +159,9 @@
                             (keys args))
                        (repeat "&")))))
                          
-(defn create-portlet-url [#^javax.portlet.PortletRequest request mode args] 
+(defn 
+  #^{:private true}
+  create-portlet-url [#^javax.portlet.PortletRequest request mode args] 
   (let [url (if (= :action mode)
               (. *response* (createActionURL))
               (. *response* (createRenderURL)))]
@@ -150,7 +172,9 @@
 ;; Generate an HREF link.
 ;; For portlets the mode-or-path must be :action or :render
 ;; and for servlets it must be a string path element
-(defn url 
+(defn 
+  #^{:doc "Generate an HREF URL given a path (or mode for portlets) and GET parameters."}
+  url 
   ([mode-or-path] (url mode-or-path {}))
   ([mode-or-path args]
      (if (string? mode-or-path)
@@ -159,14 +183,21 @@
        ;; create action or render url for portlet
        (create-portlet-url (. *request* (getActualRequest)) mode-or-path args))))
 
-(defn request-parameter [#^String name]
+(defn 
+  #^{:doc "Get the value of a single valued request parameter."}
+  request-parameter [#^String name]
   (. *request* (getParameter name)))
-(defn multi-request-parameter [#^String name]
+
+(defn 
+  #^{:doc "Get the values of a multi valued request parameter as a sequence."}
+  multi-request-parameter [#^String name]
   (seq (. *request* (getParameterValues name))))
 
 ;; Return mapping {"param name" [values], ...}
-;; or request parameters
-(defn request-parameters 
+;; of request parameters
+(defn 
+  #^{:doc "Return a mapping of parameter names to sequences of values."}
+  request-parameters 
   ([] (request-parameters *request*))
   ([#^webjure.Request request] 
      (let [param-map (. request (getParameterMap))]
@@ -219,7 +250,9 @@
 ;; the initial-value stored in the session and
 ;; returned. If initial-value is an IFn then
 ;; it is invoked to produce the value to store.
-(defn session-get 
+(defn
+  #^{:doc "Get a stored value from the client session by key. Initial value (which may be a function that generates a value) will be used if specified and no value is stored in the session."}
+  session-get 
   ([attribute] (. (. *request* (getSession)) (getAttribute attribute)))
   ([attribute initial-value]
    (let [val (session-get attribute)]
@@ -231,7 +264,9 @@
 	 new-value)
        val))))
 
-(defn session-set [name value]
+(defn 
+  #^{:doc "Store a value by key in the client session."}
+  session-set [name value]
   (. (. *request* (getSession)) (setAttribute name value)))
 
 (defn send-error 
@@ -259,13 +294,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Useful code for webjure apps
 
-(defn send-output 
+(defn 
+  #^{:doc "Send string output to client with given content-type."} 
+  send-output 
   ([content-type content] (send-output *response* content-type content))
   ([#^webjure.Response response #^String content-type #^String content]
    (. response (setContentType content-type))
    (. (. response (getWriter)) (append content))))
 
-(defn slurp-post-data 
+(defn 
+  #^{:doc "Read POST data and return it as a  string."}
+  slurp-post-data 
   ([] (slurp-post-data *request*))
   ([#^webjure.Request request]
    (let [sb (new StringBuilder)
@@ -280,18 +319,14 @@
 	   (recur (. in (read)))))))))
   
 
-(defn is-map? [m] (instance? clojure.lang.Associative m))
-(defn is-seq? [s] (instance? clojure.lang.ISeq s))
-(defn is-string? [s] (instance? java.lang.String s))
-
 
 (defn html-format-default [out obj]
   (append out (str obj)))
 
 (def +type-dispatch-table+ {})
 (defn html-format [out #^Object obj]
-  (let [type (or (and (is-seq? obj) :seq)
-		 (and (is-string? obj) :string)
+  (let [type (or (and (seq? obj) :seq)
+		 (and (string? obj) :string)
 		 (. obj (getClass)))
 	formatter (get +type-dispatch-table+ type)]
     (if (= nil formatter)
@@ -303,9 +338,9 @@
 (defn html-format-tag [out tag]
   (let [tagname (name (first tag))
 	attrs   (second tag)
-        content (if (is-map? attrs) (rest (rest tag)) (rest tag))]
+        content (if (map? attrs) (rest (rest tag)) (rest tag))]
     (append out "<" tagname)
-    (if (is-map? attrs)
+    (if (map? attrs)
       (doseq kw (keys attrs)
 	(append out " " (name kw) "=\"" (str (get attrs kw)) "\"")))
     (if (= nil content)
@@ -324,7 +359,11 @@
    :string html-format-string
    })
    
-(defn format-date
+(defn 
+  #^{:doc "Format date using a SimpleDateFormat pattern."
+     :test (fn [] (assert (= "01.01.1970" 
+                             (format-date "dd.MM.yyyy" (new java.util.Date (long 0))))))}
+  format-date
   ([#^String fmt #^java.util.Date date] (. (new java.text.SimpleDateFormat fmt) (format date)))
   ([#^String fmt] (. (new java.text.SimpleDateFormat fmt) (format (new java.util.Date)))))
 

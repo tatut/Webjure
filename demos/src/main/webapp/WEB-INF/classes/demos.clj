@@ -108,9 +108,7 @@
       `(:html
         (:body
          ~(let [results (sql/query db "SELECT c.COUNTRY, c.COUNTRY_ISO_CODE, c.REGION, (SELECT COUNT(*) FROM cities WHERE country_iso_code=c.country_iso_code) as cities FROM countries c ORDER BY country ASC")
-                columns (:columns (meta results))]
-            (dbg results)
-            (dbg columns)
+                columns (:columns (meta results))]            
             (format-table (map first columns) results
                           ["List cities" (fn [row]
                                            (url "/dbtest-cities" {:country (second row)}))])))))))

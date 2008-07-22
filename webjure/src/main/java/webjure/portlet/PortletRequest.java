@@ -9,9 +9,9 @@ import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Map;
 
-import javax.portlet.PortletRequest;
 
 import webjure.Request;
+import webjure.Session;
 
 /**
  * A portlet request wrapper.
@@ -44,5 +44,8 @@ public class PortletRequest implements Request {
             names.add((String) en.nextElement());
         return names;
     }
-    
+
+    public Session getSession() {
+        return new PortletSession(request.getPortletSession());
+    }
 }

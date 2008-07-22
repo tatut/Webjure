@@ -5,44 +5,45 @@
 (clojure/refer 'clojure)
 
 (refer 'webjure :only '(
+         url
 	 defh
 	 format-date
 	 html-format
 	 publish
 	 *request* *response* request-headers request-path require response-writer	 
+         request-parameters
 	 session-get
 	 send-output slurp-post-data))
 
-(defn url [& u]
-  (reduce strcat (webjure/base-url) u))
+;;(defn url [& u]
+;;  (reduce str (webjure/base-url) u))
 
 
 (defh "/index" [] {:output :html}
-  (let [base-url (webjure/base-url)]
-    `(:html 
-      (:body 
-       (:h3 "Webjure, a web framework like thing.")
-       (:p "Welcome to webjure, a clojure web framework. Not much is done yet, but feel free "
-	   "to look at the demos.")
-	(:ul
-	 (:li (:a {:href ~(url "/index")} "This page, a simple sexp markup page"))
-	 (:li (:a {:href ~(url "/info")} "Dump request info"))
-	 (:li (:a {:href ~(url "/dbtest")} "Database test"))
-	 (:li (:a {:href ~(url "/ajaxrepl")} "an AJAX REPL")))
-	
-
-	(:div {:style "position: relative; left: 50%;"}
-	      (:div {:style "text-align: center; width: 300px; position: absolute; left: -150; border: dotted black 2px; background-color: yellow; padding: 10px;"}
-		    (:b "Important notice: ") "Have a nice and RESTful day!"
-		    (:br)
-		    (:div {:style "font-size: small;"} ~(format-date "dd.MM.yyyy hh:mm"))))))))
+  `(:html 
+    (:body 
+     (:h3 "Webjure, a web framework like thing.")
+     (:p "Welcome to webjure, a clojure web framework. Not much is done yet, but feel free "
+         "to look at the demos.")
+     (:ul
+      (:li (:a {:href ~(url "/index")} "This page, a simple sexp markup page"))
+      (:li (:a {:href ~(url "/info" {:some "value" :another "one"})} "Dump request info"))
+      (:li (:a {:href ~(url "/dbtest")} "Database test"))
+      (:li (:a {:href ~(url "/ajaxrepl")} "an AJAX REPL")))
+     
+     
+     (:div {:style "position: relative; left: 50%;"}
+           (:div {:style "text-align: center; width: 300px; position: absolute; left: -150; border: dotted black 2px; background-color: yellow; padding: 10px;"}
+                 (:b "Important notice: ") "Have a nice and RESTful day!"
+                 (:br)
+                 (:div {:style "font-size: small;"} ~(format-date "dd.MM.yyyy hh:mm")))))))
 
 
 (defn format-map-as-table [keylabel valuelabel themap]
   `(:table
     (:tr (:th ~keylabel) (:th ~valuelabel))
     ~@(map (fn [key]
-	       `(:tr (:td ~key) (:td ~(reduce (fn [x y] (strcat x ", " y)) (get themap key)))))
+	       `(:tr (:td ~key) (:td ~(reduce (fn [x y] (str x ", " y)) (get themap key)))))
 	   (keys themap))))
 
 (defn format-table [headers values & actions]
@@ -66,6 +67,10 @@
      ~(format-map-as-table "Name" "Values" (request-headers))
      (:br)
      
+     (:h3 "Request parameters")
+     ~(format-map-as-table "Name" "Values" (request-parameters))
+     (:br)
+                                             
      (:h3 "Path info")
      (:p ~(request-path)))))
 
@@ -78,7 +83,7 @@
 
 (defn connect-to-db [location]
   (do (sql/register-driver "org.apache.derby.jdbc.EmbeddedDriver")
-      (sql/connect (strcat "jdbc:derby:" location))))
+      (sql/connect (str "jdbc:derby:" location))))
 
 (defn dbtest-ask-location []
   `(:html
@@ -135,7 +140,7 @@
 
 (def ajaxrepl-js 
      ;; FIXME: Move me to a resource file
-     (strcat 
+     (str 
       "var req;"
       "function replCallback(txt) {"
       "  if(req.readyState == 4) {"

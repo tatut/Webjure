@@ -23,9 +23,15 @@
     </dependency>
 
     <dependency>
+        <groupId>javax.portlet</groupId>
+        <artifactId>portlet-api</artifactId>
+        <version>1.0</version>
+    </dependency>
+
+    <dependency>
       <groupId>jvm.clojure</groupId>
       <artifactId>clojure-lang</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>20080612</version>
     </dependency>
 
   </dependencies>

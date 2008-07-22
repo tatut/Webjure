@@ -22,7 +22,7 @@
     stmt))
   
 (defn dbg [& items]
-  (. (. System err) (println (reduce strcat (map str items)))))
+  (. (. System err) (println (reduce str (map str items)))))
 
 ;; Execute query and return results as a list of lists.
 ;; Result set metadata is attached to the returned list.

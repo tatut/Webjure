@@ -7,8 +7,8 @@
 
 ;; The *request* and *response* vars are bound to the HttpServletRequest
 ;; and HttpServletResponse of the servlet request that is currently being handled
-(def #^javax.servlet.http.HttpServletRequest *request*) 
-(def #^javax.servlet.http.HttpServletResponse *response*) 
+(def #^webjure.Request *request*) 
+(def #^webjure.Response *response*) 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37,6 +37,16 @@
 (defn append [#^java.lang.Appendable out & #^String stuff]
   (doseq thing stuff (. out (append (str thing)))))
 
+(defn urlencode 
+  ([#^String s] (urlencode s "UTF-8"))
+  ([#^String s #^String encoding] 
+     (. java.net.URLEncoder (encode s encoding))))
+
+(defn urldecode
+  ([#^String s] (urldecode s "UTF-8"))
+  ([#^String s #^String encoding]
+     (. java.net.URLDecoder (decode s encoding))))
+     
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Handler dispatch
@@ -49,8 +59,8 @@
   (if (not (instance? clojure.lang.IFn fn))
     (throw (new java.lang.IllegalArgumentException "First argument must be function")))
   (def *handlers*
-       (cons [fn url-pattern]
-	     *handlers*)))
+       (conj *handlers*
+             [fn url-pattern])))
 
 (defn handler-matches? [handler pattern]
   (let [url-pattern (second handler)]
@@ -75,48 +85,102 @@
   (loop [acc (list)]
     (if (not (. en (hasMoreElements)))
       (reverse acc)
-      (recur (cons (. en (nextElement)) acc)))))
+      (recur (conj acc (. en (nextElement)))))))
 
 
 (defn request-path 
   ([] (request-path *request*))
-  ([#^javax.servlet.http.HttpServletRequest request] (. request (getPathInfo))))
+  ([#^webjure.Request request] (. (. request (getActualRequest)) (getPathInfo))))
 
 (defn response-writer 
   ([] (response-writer *response*))
-  ([#^javax.servlet.http.HttpServletResponse response] (. response (getWriter))))
+  ([#^webjure.Response response] (. response (getWriter))))
 
 (defn request-headers 
   ([] (request-headers *request*))
-  ([#^javax.servlet.http.HttpServletRequest request]
-   (loop [acc {} 
-	      header-names (enumeration->list (. request (getHeaderNames)))]
-     (if (= nil header-names)
-       acc
-       (let [name (first header-names)]
-	 (recur (assoc acc name (enumeration->list (. request (getHeaders name))))
-		(rest header-names)))))))
+  ([#^webjure.Request servlet-request]    
+     (let [#^javax.servlet.http.HttpServletRequest request 
+           (. servlet-request (getActualRequest))]
+       (loop [acc {} 
+              header-names (enumeration->list 
+                            (. request (getHeaderNames)))]
+         (if (= nil header-names)
+           acc
+           (let [name (first header-names)]
+             (recur (assoc acc name (enumeration->list (. request (getHeaders name))))
+                    (rest header-names))))))))
 
 
 ;; Dynamically calculate and return the app baseurl
 ;; based on the current request
-(defn base-url []
-  (str (. *request* (getScheme))
+(defn base-url 
+  ([] (base-url (. *request* (getActualRequest))))
+  ([#^javax.servlet.http.HttpServletRequest request]
+     (str (. request (getScheme))
 	  "://"
-	  (. *request* (getServerName))
-	  (let [port (. *request* (getServerPort))]
+	  (. request (getServerName))
+	  (let [port (. request (getServerPort))]
 	    (if (not (or (== port 80) (== port 443)))
 	      (str ":" port)
 	      ""))
-	  (. *request* (getContextPath))))
+	  (. request (getContextPath)))))
 
+(defn create-servlet-url [#^javax.servlet.HttpServletRequest request path args]
+  (str
+   (base-url request)
+   path
+   "?" 
+   (reduce str
+           (interleave (map (fn [key]
+                              (str (urlencode (if (keyword? key)
+                                                (substr (str key) 1)
+                                                key))
+                                   "=" (urldecode (get args key))))
+                            (keys args))
+                       (repeat "&")))))
+                         
+(defn create-portlet-url [#^javax.portlet.PortletRequest request mode args] 
+  (let [url (if (= :action mode)
+              (. *response* (createActionURL))
+              (. *response* (createRenderURL)))]
+    (doseq key (keys args)
+      (. url (setParameter key (get args key))))
+    (. url (toString))))
+
+;; Generate an HREF link.
+;; For portlets the mode-or-path must be :action or :render
+;; and for servlets it must be a string path element
+(defn url 
+  ([mode-or-path] (url mode-or-path {}))
+  ([mode-or-path args]
+     (if (string? mode-or-path)
+       ;; create HREF from base url
+       (create-servlet-url (. *request* (getActualRequest)) mode-or-path args)
+       ;; create action or render url for portlet
+       (create-portlet-url (. *request* (getActualRequest)) mode-or-path args))))
 
 (defn request-parameter [#^String name]
   (. *request* (getParameter name)))
 (defn multi-request-parameter [#^String name]
   (seq (. *request* (getParameterValues name))))
 
+;; Return mapping {"param name" [values], ...}
+;; or request parameters
+(defn request-parameters 
+  ([] (request-parameters *request*))
+  ([#^webjure.Request request] 
+     (let [param-map (. request (getParameterMap))]
+       (loop [acc {}
+              param-names (seq (. param-map (keySet)))]
+         (if (nil? param-names)
+           acc
+           (recur
+            (assoc acc
+              (first param-names) (seq (. param-map (get (first param-names)))))
+            (rest param-names)))))))
 
+       
+       
 (defn generate-request-binding [sym accessor]
   (if (instance? java.lang.String accessor)
     `[~sym (request-parameter ~accessor)]
@@ -171,17 +235,17 @@
 
 (defn send-error 
   ([code message] (send-error *response* code message))
-  ([#^javax.servlet.http.HttpServletResponse response code message]
-   (. response (sendError code message))))
+  ([#^webjure.Response response code message]     
+     (. (. response (getActualResponse)) (sendError code message))))
 
 
 ;; The main dispatch function. This is called from WebjureServlet
 (defn dispatch [#^String method 
-		#^javax.servlet.http.HttpServletRequest request 
-		#^javax.servlet.http.HttpServletResponse response]
+		#^webjure.Request request 
+		#^webjure.Response response]
   (binding [*request* request
 	    *response* response]
-    (let [handler (first (find-handler (request-path request)))]
+    (let [handler (first (find-handler (request-path *request*)))]
       (if (= nil handler)
 	;; No handler found, give a 404
 	;; PENDING: Add 404-handler support (a special dispatch url, like :default)
@@ -196,7 +260,7 @@
 
 (defn send-output 
   ([content-type content] (send-output *response* content-type content))
-  ([#^javax.servlet.http.HttpServletResponse response #^String content-type #^String content]
+  ([#^webjure.Response response #^String content-type #^String content]
    (. response (setContentType content-type))
    (. (. response (getWriter)) (append content))))
 
@@ -268,13 +332,13 @@
 ;; that automatically sends the return value as a response 
 (defmacro defh [url request-bindings options & body]
   `(publish (fn []
-		(request-bind ~request-bindings
-			      ~@(if (= :html (:output options))
-				  `(do
-				     (. *response* (setContentType "text/html"))
-				     (html-format (response-writer)
-						 (do ~@body)))
-				  body)))
+              (request-bind ~request-bindings
+                            ~@(if (= :html (:output options))
+                                `(do
+                                   (. *response* (setContentType "text/html"))
+                                   (html-format (response-writer)
+                                                (do ~@body)))
+                                body)))
 	    ~url))
 
   

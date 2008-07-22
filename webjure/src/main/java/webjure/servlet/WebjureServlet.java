@@ -160,7 +160,9 @@ public class WebjureServlet extends HttpServlet {
     private void webjureRequest(String method, HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
 	try {
-	    dispatch.invoke(method, request, response);
+	    dispatch.invoke(method, 
+                            new webjure.servlet.ServletRequest(request), 
+                            new webjure.servlet.ServletResponse(response));
 	} catch(Exception e) {
 	    /* This is here for debugging, a better error handling mechanism would be good */
 	    response.setContentType("text/plain");

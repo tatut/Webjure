@@ -31,7 +31,7 @@
         result-set   (. stmt (executeQuery))
 	metadata     (. result-set (getMetaData))
 	column-count (. metadata (getColumnCount))
-	columns      (touch (map (fn [i]
+	columns      (doall (map (fn [i]
 				     [(. metadata (getColumnName i))
 				      (. metadata (getColumnClassName i))]) (range 1 (+ 1 column-count))))]
     (loop [acc []
@@ -39,7 +39,7 @@
       (if (= false (. result-set (next)))
 	(let [result-list (or (reverse acc) (list))]
 	  (with-meta result-list {:columns columns :rows row-count}))
-	(recur (conj acc (touch (map (fn [i] (. result-set (getObject i)))
+	(recur (conj acc (doall (map (fn [i] (. result-set (getObject i)))
 						     (range 1 (+ 1 column-count)))))
 	       (+ 1 row-count))))))
 

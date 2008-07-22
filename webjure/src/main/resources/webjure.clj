@@ -224,14 +224,15 @@
   ([attribute initial-value]
    (let [val (session-get attribute)]
      (if (nil? val)
-       (let [new-value (or (and (instance? clojure.lang.IFn initial-value)
-				(initial-value))
-			   initial-value)]
+       (let [new-value (if (instance? clojure.lang.IFn initial-value)
+                         (initial-value)
+                         initial-value)]
 	 (. (. *request* (getSession)) (setAttribute attribute new-value))
 	 new-value)
        val))))
 
-
+(defn session-set [name value]
+  (. (. *request* (getSession)) (setAttribute name value)))
 
 (defn send-error 
   ([code message] (send-error *response* code message))
@@ -266,9 +267,11 @@
 
 (defn slurp-post-data 
   ([] (slurp-post-data *request*))
-  ([#^javax.servlet.http.HttpServletRequest request]
+  ([#^webjure.Request request]
    (let [sb (new StringBuilder)
-	    in (new java.io.BufferedReader (new java.io.InputStreamReader (. request (getInputStream))))]
+	    in (new java.io.BufferedReader 
+                    (new java.io.InputStreamReader 
+                         (. (. request (getActualRequest)) (getInputStream))))]
      (loop [ch (. in (read))]
        (if (< ch 0)
 	 (. sb (toString))

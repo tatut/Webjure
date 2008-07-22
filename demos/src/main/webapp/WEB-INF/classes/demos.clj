@@ -12,11 +12,13 @@
 	 publish
 	 *request* *response* request-headers request-path require response-writer	 
          request-parameters
-	 session-get
+	 session-get session-set
 	 send-output slurp-post-data))
 
-;;(defn url [& u]
-;;  (reduce str (webjure/base-url) u))
+
+(defn dbg [& u]
+  (. (. System err)
+     (println (apply pr-str u))))
 
 
 (defh "/index" [] {:output :html}
@@ -29,6 +31,7 @@
       (:li (:a {:href ~(url "/index")} "This page, a simple sexp markup page"))
       (:li (:a {:href ~(url "/info" {:some "value" :another "one"})} "Dump request info"))
       (:li (:a {:href ~(url "/dbtest")} "Database test"))
+      (:li (:a {:href ~(url "/session")} "Session test"))
       (:li (:a {:href ~(url "/ajaxrepl")} "an AJAX REPL")))
      
      
@@ -55,8 +58,8 @@
     ~@(map (fn [row] `(:tr 
 		       ~@(map (fn [v] `(:td ~(str v))) row)
 		       (:td ~@(map (fn [action]
-				       `(:a {:href ~((second action) row)}
-					    ~(first action))) actions))
+                                     `(:a {:href ~((second action) row)}
+                                          ~(first action))) actions))
 		       ))
 	   values)))
 
@@ -96,39 +99,33 @@
 	    (:input {:type "submit" :value "Go!"})))))
 
 (defh "/dbtest" [loc {:name "db" :optional true}] {:output :html}
-  (let [db (or (session-get "db")
-	       (and loc (connect-to-db loc)))]
-    (if db
+  (let [db (session-get "db"
+                        (fn [] (if (nil? loc)
+                                 nil
+                                 (connect-to-db loc))))]
+    (if (nil? db)
       (dbtest-ask-location)
-      (do
-	(. *response* (setContentType "text/html"))
-	(html-format
-	 (response-writer)
-	 
-	 `(:html
-	   (:body
-	    ~(let [results (sql/query db "SELECT c.*, (SELECT COUNT(*) FROM cities WHERE country_iso_code=c.country_iso_code) as cities FROM countries c ORDER BY country ASC")
-			   columns (:columns (meta results))]
-	       (format-table (map first columns) results
-			     ["List cities" (fn [row]
-						(url "/dbtest-cities?country=" (second row)))])))))))))
+      `(:html
+        (:body
+         ~(let [results (sql/query db "SELECT c.COUNTRY, c.COUNTRY_ISO_CODE, c.REGION, (SELECT COUNT(*) FROM cities WHERE country_iso_code=c.country_iso_code) as cities FROM countries c ORDER BY country ASC")
+                columns (:columns (meta results))]
+            (dbg results)
+            (dbg columns)
+            (format-table (map first columns) results
+                          ["List cities" (fn [row]
+                                           (url "/dbtest-cities" {:country (second row)}))])))))))
 
-;; (defn dbtest-cities []
-;;   (. *response* (setContentType "text/html"))
-;;   (let [country (. *request* (getParameter "country"))
-;; 	cities (sql/query db "SELECT * FROM cities WHERE country_iso_code=?" country)]
-;;     (html-format
-;;      (response-writer)
+(defh "/dbtest-cities" [country "country"] {:output :html}
+  (let [cities (sql/query (session-get "db")
+                          "SELECT * FROM cities WHERE country_iso_code=?" country)]    
+    `(:html
+      (:body
+       ~(format-table (map first (:columns (meta cities))) cities)
+       (:b ~(str (:rows (meta cities)) " cities.")))
+      (:br)
+      (:a {:href ~(url "/dbtest")} "&laquo; back to countries"))))
 
-;;      `(:html
-;;        (:body
-;; 	~(format-table (map first (:columns (meta cities))) cities)
-;; 	(:b ~(strcat (str (:rows (meta cities))) " cities.")))
-;;        (:br)
-;;        (:a {:href ~(url "/dbtest")} "&laquo; back to countries")))))
-       
-;; (publish dbtest "/dbtest")
-;; (publish dbtest-cities "/dbtest-cities")
+
 
 ;;;;;;;;;;;;;
 ;; AJAX REPL
@@ -138,46 +135,49 @@
 ;; with thread deadlocking... 
 
 
-(def ajaxrepl-js 
-     ;; FIXME: Move me to a resource file
-     (str 
-      "var req;"
-      "function replCallback(txt) {"
-      "  if(req.readyState == 4) {"
-      "    if(req.status == 200) {"
-      "      if(req.responseText.length > 0) append('=> '+req.responseText);"
-      "      read();"
-      "    } else {"
-      "      alert('Unable to read repl: '+req.statusText);"
-      "    }"
-      "  }"
-      "} "
+(defn ajaxrepl-js []
+  ;; FIXME: Move me to a resource file
+  (reduce 
+   str 
+   (interleave
+    ["var req;"
+     "function replCallback(txt) {"
+     "  if(req.readyState == 4) {"
+     "    if(req.status == 200) {"
+     "      if(req.responseText.length > 0) appendContent('=> '+req.responseText);"
+     "      readRepl();"
+     "    } else {"
+     "      alert('Unable to read repl: '+req.statusText);"
+     "    }"
+     "  }"
+     "} "
       
-      "function read() { "
-      "  req = new XMLHttpRequest();"
-      "  req.onreadystatechange = replCallback;"
-      "  req.open('GET', 'http://localhost:8080/webjure/ajaxrepl-out', true);"
-      "  req.send();"
-      "} "
+     "function readRepl() { "
+     "  req = new XMLHttpRequest();"
+     "  req.onreadystatechange = replCallback;"
+     (str "  req.open('GET', '" (url "/ajaxrepl-out") "', true);")
+     "  req.send();"
+     "} "
       
-      "function append(txt) {"
-      "  var elt = document.getElementById('replout');"
-      "  elt.innerHTML += txt + '\\n';"
-      "  elt.scrollTop = elt.scrollHeight;"
-      "} "
+     "function appendContent(txt) {"
+     "  var elt = document.getElementById('replout');"
+     "  elt.innerHTML += txt + '\\n';"
+     "  elt.scrollTop = elt.scrollHeight;"
+     "} "
           
-      "function keyHandler(event) { if(event.keyCode == 13) write(); } "
+     "function keyHandler(event) { if(event.keyCode == 13) write(); } "
 
-      "function write() { "
-      "   var elt = document.getElementById('replin');"
-      "   var r = new XMLHttpRequest();"
-      "   r.open('POST', 'http://localhost:8080/webjure/ajaxrepl-in', true);"
-      "   append(elt.value);"
-      "   r.send(elt.value);"
-      "   elt.value = '';"
-      "}"
+     "function write() { "
+     "   var elt = document.getElementById('replin');"
+     "   var r = new XMLHttpRequest();"
+     (str "   r.open('POST', '" (url "/ajaxrepl-in") "', true);")
+     "   appendContent(elt.value);"
+     "   r.send(elt.value);"
+     "   elt.value = '';"
+     "}"
 
-      "window.onload = read;"))
+     "window.onload = readRepl;"]
+    (repeat "\n"))))
 
 ;; The main page
 (defn ajaxrepl []
@@ -188,7 +188,7 @@
      (:head (:title "Webjure AJAX REPL")
 	    (:script {:type "text/javascript"
 		      :language "javascript"}
-		      ~ajaxrepl-js))
+		      ~(ajaxrepl-js)))
 
      (:body 
       (:h3 "Webjure AJAX REPL")
@@ -202,72 +202,45 @@
 
 (publish ajaxrepl "/ajaxrepl")
 
+;;; Session test
 
-;;;;; WORKING POLLING VERSION
-;; (defn ensure-ajax-queue []
-;;   (let [session (. *request* (getSession))
-;; 	queue (. session (getAttribute "ajaxrepl"))]
-;;     (if queue
-;;       queue
-;;       ;; Create and store in session
-;;       (let [queue (new java.util.concurrent.ArrayBlockingQueue 5)]
-;; 	(. session (setAttribute "ajaxrepl" queue))
-;; 	(ensure-ajax-queue)))))
+(defh "/session" [] {:output :html}
+  `(:html
+    (:head (:title "Webjure session test"))
+    (:body
+     ~(let [count (session-get "count")
+            greeting (if (nil? count)
+                       "Hello first time user"
+                       (str "Hello, this has been called " count " times."))]
+        (session-set "count" (if (nil? count) 1 (inc count)))
+        greeting))))
 
-;; (defn ajaxrepl-out []
-;;   (let [queue (ensure-ajax-queue) 
-;; 	value (. queue (poll 1000 (. java.util.concurrent.TimeUnit MILLISECONDS)))]
-;;     (send-output "text/plain"  
-;; 		 (if (nil? value) ""
-;; 		     (binding [clojure/*out* (new java.io.StringWriter)]
-;; 		       (pr (. webjure.servlet.WebjureServlet (eval value)))
-;; 		       (str *out*))))))
-;; (publish ajaxrepl-out "/ajaxrepl-out")
 
-;; (defn ajaxrepl-in []
-;;   (let [queue (ensure-ajax-queue)]
-;;     (. queue (put (slurp-post-data)))
-;;     (scan queue)
-;;     (send-output "text/plain" (str queue))))
-;; (publish ajaxrepl-in "/ajaxrepl-in")
+;;; A REPL using Refs 
 
-;;;;;;; PIPE VERSION
-(defn ensure-ajax-io [req]
-  (let [session (. req (getSession))
-	initialized (. session (getAttribute "ajaxrepl"))]
-    (if initialized
-      [(. session (getAttribute "ajaxrepl-in")) 
-       (. session (getAttribute "ajaxrepl-out"))]
+(defn repl-session []
+  (session-get "repl-messages" (fn [] (ref []))))
+     
 
-      ;; Create and store in session
-      (let [out (new java.io.PipedWriter)
-	    in (new java.io.PipedReader)];(new java.io.PushbackReader (new java.io.PipedReader out))]
-	(. in (connect out))
-	(. session (setAttribute "ajaxrepl-in" in))
-	(. session (setAttribute "ajaxrepl-out" out))
-	(. session (setAttribute "ajaxrepl" true))
-	(ensure-ajax-io req)))))
 
 ;; Return new content since last update
 ;; if there is no new content, wait for some
-
-;(defn ajaxrepl-out [m req resp]
-;  (let [in (first (ensure-ajax-io req))]
-;    (webjure/send-output resp "text/plain"
-;			 (str (eval (read in))))))
-(defn ajaxrepl-out [m req resp]
-  (let [in (first (ensure-ajax-io req))]
-    (. Thread (sleep 5000))
-    (webjure/send-output resp "text/plain"
-			 (str in))));(str (. in (read))))))
-
+(defn ajaxrepl-out []
+  (dosync
+   (let [repl-messages (repl-session)
+         msgs @(repl-session)]
+     (webjure/send-output "text/plain"
+                          (reduce str
+                                  (interleave @msgs (repeat "\n"))))
+     (ref-set repl-messages []))))
 (webjure/publish ajaxrepl-out "/ajaxrepl-out")
 
-(defn ajaxrepl-in [m req resp]
-  (let [out (second (ensure-ajax-io req))]
-    (. out (append (webjure/slurp-post-data req)))
-    (. out (flush))
-    (webjure/send-output resp "text/plain" (str out))))
+(defn ajaxrepl-in []
+  (dosync
+   (let [repl-messages (repl-session)
+         input (webjure/slurp-post-data)]
+     (alter repl-messages conj (eval input))
+     (webjure/send-output "text/plain" "OK"))))
 (webjure/publish ajaxrepl-in "/ajaxrepl-in")
 
 		      

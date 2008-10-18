@@ -312,45 +312,6 @@
   
 
 
-(defn html-format-default [out obj]
-  (append out (str obj)))
-
-(def +type-dispatch-table+ {})
-(defn html-format [out #^Object obj]
-  (let [type (or (and (seq? obj) :seq)
-		 (and (string? obj) :string)
-		 (. obj (getClass)))
-	formatter (get +type-dispatch-table+ type)]
-    (if (= nil formatter)
-      ;;(html-format-default out obj)
-      (throw (new java.lang.IllegalArgumentException (str "No formatter for type: " (str type))))
-      (apply formatter (list out obj)))))
-
-
-(defn html-format-tag [out tag]
-  (let [tagname (name (first tag))
-	attrs   (second tag)
-        content (if (map? attrs) (rest (rest tag)) (rest tag))]
-    (append out "<" tagname)
-    (if (map? attrs)
-      (doseq kw (keys attrs)
-	(append out " " (name kw) "=\"" (str (get attrs kw)) "\"")))
-    (if (= nil content)
-      (append out " />")
-      (do	
-	(append out ">")
-	(doseq c content
-	  (html-format out c))
-	(append out "</" tagname ">")))))
-      
-(defn html-format-string [out str]
-  (append out str))
-
-(def +type-dispatch-table+
-  {:seq    html-format-tag
-   :string html-format-string
-   })
-   
 (defn 
   #^{:doc "Format date using a SimpleDateFormat pattern."
      :test (fn [] (assert (= "01.01.1970" 
@@ -370,7 +331,7 @@
                             ~@(if (= :html (:output options))
                                 `(do
                                    (. *response* (setContentType "text/html"))
-                                   (html-format (response-writer)
+                                   (webjure.html/html-format (response-writer)
                                                 (do ~@body)))
                                 body)))
 	    ~url))

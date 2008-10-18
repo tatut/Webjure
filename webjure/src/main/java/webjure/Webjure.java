@@ -21,13 +21,30 @@ import clojure.lang.IFn;
 import clojure.lang.LispReader;
 import clojure.lang.Symbol;
 import clojure.lang.Var;
+import clojure.lang.RT;
 
+/**
+ * Common glue and interfacing code to Clojure.
+ * No other class in webjure should directly touch
+ * clojure internals.
+ */
 public class Webjure {
 
-    private static Logger log = Logger.getLogger(Webjure.class.getName());
+    private static final String INIT_SCRIPT = "webjure/webjure.clj";
 
-    // Store required modules, so they are not loaded again
-    private static HashSet<String> requiredModules = new HashSet<String>();
+    private static Logger log = Logger.getLogger(Webjure.class.getName());
+    static {
+	System.out.println("INITI!!!!");
+	try {
+	    log.info("Initializing Webjure.");
+	    RT.loadResourceScript(INIT_SCRIPT);
+	} catch(Exception e) {
+	    log.severe("Unable to load \""+INIT_SCRIPT+"\": "+e.getMessage());
+	    throw new WebjureException("Webjure initialization failed: "+e.getMessage(),
+				       e);
+	}
+    }
+   
 
     /**
      * Load a .clj file from context.
@@ -38,28 +55,27 @@ public class Webjure {
      */
     public static void loadFromResource(String file) throws Exception {
 	log.info("Loading script: "+file);
-	clojure.lang.Compiler.load(new InputStreamReader(Webjure.class.getClassLoader().getResourceAsStream(file)));	
+	//clojure.lang.Compiler.load(new InputStreamReader(Webjure.class.getClassLoader().getResourceAsStream(file)));	
+	RT.loadResourceScript(file);
     }
     
-    /**
-     * This is called from webjure code to require new modules.
-     * Currently a module name is simply the file name without .clj suffix.
-     * 
-     * @param module the module to require
-     * @deprecated Use clojure module functionalities instead
-     */
-    public static void require(String module) throws Exception {
-	if(!requiredModules.contains(module)) {
-	    loadFromResource(module+".clj");
-	    requiredModules.add(module);
-	}
-    }
-
     /**
      * Evaluate string with the proper classloader.
      */
     public static Object eval(String in) throws Exception {
     	return clojure.lang.Compiler.eval(LispReader.read(new PushbackReader(new StringReader(in)), true, null, false));
     }
-	
+
+    /**
+     * Retrieve a Clojure function. The name is a namespace
+     * qualified var name (eg. "myns/my-function").
+     */
+    public static IFn getFunction(String qualifiedName) {
+	try {
+	    return Var.find(Symbol.intern("webjure/dispatch")).fn();
+	} catch(Exception e) {
+	    throw new WebjureException("getFunction(\""+qualifiedName+"\") failed: "+
+				       e.getMessage(), e);
+	}
+    }
 }

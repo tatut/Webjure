@@ -97,8 +97,9 @@ public class WebjureServlet extends HttpServlet {
     public void init() throws ServletException {
 	
 	/* Load webjure */
-	load("webjure/webjure.clj");
-	dispatch = Var.find(Symbol.intern("webjure/dispatch")).fn();
+	
+	dispatch = Webjure.getFunction("webjure/dispatch");
+	
 	
 	/* Load application startup scripts, if any */
 	String[] startupScripts = getStartupScripts();

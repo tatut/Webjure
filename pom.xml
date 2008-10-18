@@ -4,7 +4,7 @@
   <groupId>webjure</groupId>
   <artifactId>webjure-top</artifactId>
   <packaging>pom</packaging>
-  <version>0.1-SNAPSHOT</version>
+  <version>0.3-SNAPSHOT</version>
   <name>webjure-top</name>
   <url>http://code.google.com/p/webjure</url>
 

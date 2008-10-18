@@ -4,13 +4,13 @@
   <groupId>webjure</groupId>
   <artifactId>webjure-demos</artifactId>
   <packaging>war</packaging>
-  <version>0.1-SNAPSHOT</version>
+  <version>0.3-SNAPSHOT</version>
   <name>webjure-demos</name>
 
   <parent>
     <groupId>webjure</groupId>
     <artifactId>webjure-top</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.3-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -18,7 +18,7 @@
     <dependency>
       <groupId>webjure</groupId>
       <artifactId>webjure</artifactId>
-      <version>0.1-SNAPSHOT</version>
+      <version>0.3-SNAPSHOT</version>
     </dependency>
 
     <dependency>
@@ -28,5 +28,13 @@
     </dependency>
   </dependencies>
 
+  <build>
+    <plugins>
+      <plugin>
+	<groupId>org.mortbay.jetty</groupId>
+	<artifactId>maven-jetty-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>  

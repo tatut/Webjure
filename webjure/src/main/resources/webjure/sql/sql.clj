@@ -1,6 +1,6 @@
  
-(in-ns 'sql)
-(clojure/refer 'clojure)
+(ns webjure.sql
+    (:refer-clojure))
 
 (defn register-driver [drv]
   (. Class (forName drv)))
@@ -21,7 +21,8 @@
 	  (recur (+ 1 i) (rest args)))))
     stmt))
   
-(defn dbg [& items]
+(defn #^{:private true}
+  dbg [& items]
   (. (. System err) (println (reduce str (map str items)))))
 
 ;; Execute query and return results as a list of lists.

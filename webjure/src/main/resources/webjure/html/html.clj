@@ -1,14 +1,16 @@
 
-(ns html
+(ns webjure.html
     (:refer-clojure))
 
-(defn append [#^java.lang.Appendable out & #^String stuff]
+(defn #^{:private true}
+  append [#^java.lang.Appendable out & #^String stuff]
   (doseq thing stuff (. out (append (str thing)))))
 
-(defn html-format-default [out obj]
+
+(defn #^{:private true} html-format-default [out obj]
   (append out (str obj)))
 
-(def +type-dispatch-table+ {})
+(def #^{:private true} +type-dispatch-table+ {})
 (defn html-format 
   ([#^Object obj]
    (let [app (new java.lang.StringBuilder)]
@@ -26,7 +28,7 @@
        (apply formatter (list out obj))))))
 
 
-(defn html-format-tag [out tag]
+(defn #^{:private true} html-format-tag [out tag]
   (let [tagname (name (first tag))
 	attrs   (second tag)
         content (if (map? attrs) (rest (rest tag)) (rest tag))]
@@ -44,10 +46,10 @@
 	  (html-format out c))
 	(append out "</" tagname ">")))))
       
-(defn html-format-string [out str]
+(defn #^{:private true} html-format-string [out str]
   (append out (. (. str (replace "<" "&lt;")) (replace ">" "&gt;"))))
 
-(def +type-dispatch-table+
+(def #^{:private true} +type-dispatch-table+
   {:seq    html-format-tag
    :string html-format-string
    })

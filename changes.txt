@@ -1,4 +1,15 @@
 
+2008-10-18:
+
+  Clojure is now one year old!
+  Update webjure to work with the latest revision.
+
+  Removed 'require' as it conflicts with clojure. The module functionality
+  from clojure should be used instead.
+
+  Organize code to new namespaces: webjure, webjure.sql, webjure.html
+
+  
 2008-01-27:
 
   Refactored all demos to use the new functionalities.

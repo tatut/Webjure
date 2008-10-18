@@ -1,19 +1,11 @@
 
 ;; Demos to be placed here
 
-(in-ns 'webjure-demos)
-(clojure/refer 'clojure)
-
-(refer 'webjure :only '(
-         url
-	 defh
-	 format-date
-	 html-format
-	 publish
-	 *request* *response* request-headers request-path require response-writer	 
-         request-parameters
-	 session-get session-set
-	 send-output slurp-post-data))
+(ns webjure-demos
+    (:refer-clojure)
+    (:use webjure)
+    (:use webjure.html)
+    (:use webjure.sql))
 
 
 (defn dbg [& u]
@@ -82,11 +74,10 @@
 ;; db test using derby tours
 ;;
 
-(require "sql")
 
 (defn connect-to-db [location]
-  (do (sql/register-driver "org.apache.derby.jdbc.EmbeddedDriver")
-      (sql/connect (str "jdbc:derby:" location))))
+  (do (register-driver "org.apache.derby.jdbc.EmbeddedDriver")
+      (connect (str "jdbc:derby:" location))))
 
 (defn dbtest-ask-location []
   `(:html
@@ -107,14 +98,14 @@
       (dbtest-ask-location)
       `(:html
         (:body
-         ~(let [results (sql/query db "SELECT c.COUNTRY, c.COUNTRY_ISO_CODE, c.REGION, (SELECT COUNT(*) FROM cities WHERE country_iso_code=c.country_iso_code) as cities FROM countries c ORDER BY country ASC")
+         ~(let [results (query db "SELECT c.COUNTRY, c.COUNTRY_ISO_CODE, c.REGION, (SELECT COUNT(*) FROM cities WHERE country_iso_code=c.country_iso_code) as cities FROM countries c ORDER BY country ASC")
                 columns (:columns (meta results))]            
             (format-table (map first columns) results
                           ["List cities" (fn [row]
                                            (url "/dbtest-cities" {:country (second row)}))])))))))
 
 (defh "/dbtest-cities" [country "country"] {:output :html}
-  (let [cities (sql/query (session-get "db")
+  (let [cities (query (session-get "db")
                           "SELECT * FROM cities WHERE country_iso_code=?" country)]    
     `(:html
       (:body
@@ -216,9 +207,9 @@
      (let [output (reduce str
                           (interleave @repl-messages (repeat "\n")))]
        (dbg "sending: " output)
-       (webjure/send-output "text/plain" output))
+       (send-output "text/plain" output))
      (ref-set repl-messages []))))
-(webjure/publish ajaxrepl-out "/ajaxrepl-out")
+(publish ajaxrepl-out "/ajaxrepl-out")
 
 (defn ajaxrepl-eval [str]
   (eval (read (new java.io.PushbackReader (new java.io.StringReader str)))))
@@ -226,10 +217,10 @@
 (defn ajaxrepl-in []
   (dosync
    (let [repl-messages (repl-session)
-         input (webjure/slurp-post-data)]
+         input (slurp-post-data)]
      (alter repl-messages conj (ajaxrepl-eval input))
-     (webjure/send-output "text/plain" "OK"))))
-(webjure/publish ajaxrepl-in "/ajaxrepl-in")
+     (send-output "text/plain" "OK"))))
+(publish ajaxrepl-in "/ajaxrepl-in")
 
 		      
 ;;; Session test

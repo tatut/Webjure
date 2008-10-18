@@ -1,6 +1,6 @@
-(in-ns 'webjure)
-(clojure/refer 'clojure)
 
+(ns webjure
+    (:refer-clojure))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Global vars 
@@ -10,14 +10,6 @@
 (def #^webjure.Request *request*) 
 (def #^webjure.Response *response*) 
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Module require functionality
-
-(defn 
-  #^{:doc "Load a Clojure script from Web application resources."}
-  require [#^String module]
-  (. webjure.Webjure (require module)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -101,7 +93,7 @@
       (reverse acc)
       (recur (conj acc (. en (nextElement)))))))
 
-
+  
 (defn 
   #^{:doc "Returns the request path information (servlet only)"}
   request-path 

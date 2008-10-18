@@ -46,7 +46,7 @@
 (defn update [#^java.sql.Connection con update & update-args]
   (let [stmt (prepare-statement con update update-args)]
     (. stmt (executeUpdate))
-    (. stmt close)))
+    (. stmt (close))))
 
 (defn call-with-tx [#^java.sql.Connection con func]
   (let [autocommit (. con (getAutoCommit))]

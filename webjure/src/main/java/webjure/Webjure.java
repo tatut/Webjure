@@ -46,6 +46,7 @@ public class Webjure {
      * Currently a module name is simply the file name without .clj suffix.
      * 
      * @param module the module to require
+     * @deprecated Use clojure module functionalities instead
      */
     public static void require(String module) throws Exception {
 	if(!requiredModules.contains(module)) {

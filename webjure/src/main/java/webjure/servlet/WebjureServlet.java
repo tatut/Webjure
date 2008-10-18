@@ -30,29 +30,29 @@ import clojure.lang.Var;
 import clojure.lang.RT;
 
 public class WebjureServlet extends HttpServlet {
+    
+    private static Logger log = Logger.getLogger(WebjureServlet.class.getName());
+	
+	
+    /* The main webjure dispatch function */
+    private IFn dispatch; 
+    
+    private ServerSocket shellServerSocket;
+    
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
+	throws IOException {
+	webjureRequest("GET", request, response);
+    }
 
-	private static Logger log = Logger.getLogger(WebjureServlet.class.getName());
-	
-	
-	/* The main webjure dispatch function */
-	private IFn dispatch; 
-	
-	private ServerSocket shellServerSocket;
-	
-	public void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws IOException {
-		webjureRequest("GET", request, response);
-	}
+    public void doPost(HttpServletRequest request, HttpServletResponse response)
+	throws IOException {
+	webjureRequest("POST", request, response);
+    }
 
-	public void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws IOException {
-		webjureRequest("POST", request, response);
-	}
-
-	/* XXX:
-	 Implement the other HTTP methods also.
-	 I usually don't have much use for them, so they are absent for now.
-	 */
+    /* XXX:
+       Implement the other HTTP methods also.
+       I usually don't have much use for them, so they are absent for now.
+    */
 
 
     private void load(String file) {
@@ -62,7 +62,7 @@ public class WebjureServlet extends HttpServlet {
 	    loadFailure(file, e);
 	}
     }
-
+    
     /**
      * React to loading failures. This can be overridden by subclasses
      * to provide specific error reporting.
@@ -96,17 +96,8 @@ public class WebjureServlet extends HttpServlet {
     
     public void init() throws ServletException {
 	
-	try {
-	    RT.init();
-	} catch(Exception e) {
-	    throw new ServletException("Unable to initialize webjure, clojure init failed: "+e.getMessage());
-	}
-
-	/* Bootstrap clojure */
-	//loadFromResource("boot.clj");
-	
 	/* Load webjure */
-	load("webjure.clj");
+	load("webjure/webjure.clj");
 	dispatch = Var.find(Symbol.intern("webjure/dispatch")).fn();
 	
 	/* Load application startup scripts, if any */
@@ -164,7 +155,8 @@ public class WebjureServlet extends HttpServlet {
                             new webjure.servlet.ServletRequest(request), 
                             new webjure.servlet.ServletResponse(response));
 	} catch(Exception e) {
-	    /* This is here for debugging, a better error handling mechanism would be good */
+	    /* This is here for debugging, 
+	       a better error handling mechanism would be good */
 	    response.setContentType("text/plain");
 	    PrintWriter out = response.getWriter();
 	    out.append(e.getMessage());

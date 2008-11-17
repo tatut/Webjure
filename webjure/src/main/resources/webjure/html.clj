@@ -4,7 +4,8 @@
 
 (defn #^{:private true}
   append [#^java.lang.Appendable out & #^String stuff]
-  (doseq thing stuff (. out (append (str thing)))))
+  (doseq [thing stuff]
+      (. out (append (str thing)))))
 
 
 (defn #^{:private true} html-format-default [out obj]
@@ -34,7 +35,7 @@
         content (if (map? attrs) (rest (rest tag)) (rest tag))]
     (append out "<" tagname)
     (if (map? attrs)
-      (doseq kw (keys attrs)
+      (doseq [kw (keys attrs)]
 	;; append the attribute value, replace disallowed " character with '
 	(append out " " (name kw) "=\"" (. (str (get attrs kw)) (replace "\"" "'"))
 		"\"")))
@@ -42,7 +43,7 @@
       (append out " />")
       (do	
 	(append out ">")
-	(doseq c content
+	(doseq [c content]
 	  (html-format out c))
 	(append out "</" tagname ">")))))
       

@@ -24,6 +24,11 @@
   </servlet>
 
   <servlet-mapping>
+    <servlet-name>default</servlet-name>
+    <url-pattern>resource/*</url-pattern>
+  </servlet-mapping>
+
+  <servlet-mapping>
     <servlet-name>webjure</servlet-name>
     <url-pattern>/*</url-pattern>
   </servlet-mapping>

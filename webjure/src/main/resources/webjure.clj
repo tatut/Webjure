@@ -29,7 +29,8 @@
   ([#^String s start end] (. s (substring start end))))
 
 (defn append [#^java.lang.Appendable out & #^String stuff]
-  (doseq thing stuff (. out (append (str thing)))))
+  (doseq [thing stuff]
+      (. out (append (str thing)))))
 
 (defn 
   #^{:doc "URL encode a string."}
@@ -157,7 +158,7 @@
   (let [url (if (= :action mode)
               (. *response* (createActionURL))
               (. *response* (createRenderURL)))]
-    (doseq key (keys args)
+    (doseq [key (keys args)]
       (. url (setParameter key (get args key))))
     (. url (toString))))
 

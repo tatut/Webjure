@@ -124,102 +124,51 @@
 ;; with thread deadlocking... 
 
 
-(defn ajaxrepl-js []
-  ;; FIXME: Move me to a resource file
-  (reduce 
-   str 
-   (interleave
-    ["var req;"
-     "function replCallback(txt) {"
-     "  if(req.readyState == 4) {"
-     "    if(req.status == 200) {"
-     "      if(req.responseText.length > 0) appendContent('=> '+req.responseText);"
-     "      readRepl();"
-     "    } else {"
-     "      alert('Unable to read repl: '+req.statusText);"
-     "    }"
-     "  }"
-     "} "
-      
-     "function readRepl() { "
-     "  req = new XMLHttpRequest();"
-     "  req.onreadystatechange = replCallback;"
-     (str "  req.open('GET', '" (url "/ajaxrepl-out") "', true);")
-     "  req.send(null);"
-     "} "
-      
-     "function appendContent(txt) {"
-     "  var elt = document.getElementById('replout');"
-     "  elt.innerHTML += txt + '\\n';"
-     "  elt.scrollTop = elt.scrollHeight;"
-     "} "
-          
-     "function keyHandler(event) { if(event.keyCode == 13) write(); } "
-
-     "function write() { "
-     "   var elt = document.getElementById('replin');"
-     "   var r = new XMLHttpRequest();"
-     (str "   r.open('POST', '" (url "/ajaxrepl-in") "', true);")
-     "   appendContent(elt.value);"
-     "   r.send(elt.value);"
-     "   elt.value = '';"
-     "}"
-
-     "window.onload = readRepl;"]
-    (repeat "\n"))))
 
 ;; The main page
-(defn ajaxrepl []
-  (html-format
-   (response-writer)
-   
-   `(:html
-     (:head (:title "Webjure AJAX REPL")
-	    (:script {:type "text/javascript"
-		      :language "javascript"}
-		      ~(ajaxrepl-js)))
+(defh "/ajaxrepl" [] {:output :html}
+  `(:html
+    (:head (:title "Webjure AJAX REPL")
+	   (:script {:type "text/javascript"
+		    :language "javascript"
+		    :src ~(url "/resource/repl.js")}))
 
-     (:body 
-      (:h3 "Webjure AJAX REPL")
-      (:div 
-       {:id "replout"
-        :style "width: 600px; height: 400px; overflow: auto; font-family: monospace; color: silver; background-color: black; white-space: pre;"}
-	"")
-
-      (:form ;{:onsubmit "return write();"}
-	     (:textarea {:onkeypress "keyHandler(event)" :id "replin" :style "width: 600px; height: 70px;"} ""))))))
-
-(publish ajaxrepl "/ajaxrepl")
+    (:body 
+     (:h3 "Webjure AJAX REPL")
+     (:div 
+      {:id "replout"
+      :style "width: 600px; height: 400px; overflow: auto; font-family: monospace; color: silver; background-color: black; white-space: pre;"}
+      "")
+     
+     (:form ;{:onsubmit "return write();"}
+      (:textarea {:onkeypress "keyHandler(event)" :id "replin" :style "width: 600px; height: 70px;"} "")))))
 
 ;;; A REPL using Refs 
 
 (defn repl-session []
-  (session-get "repl-messages" (fn [] (ref []))))
+  (session-get "repl-messages" (fn [] (agent []))))
      
+(defn repl-write [messages new-msg]
+  (conj new-msg messages))
 
+(defn repl-fetch [messages writer]
+  (. writer (append (reduce str (interleave messages (repeat "\n")))))
+  ;; new state is no messages
+  [])
+  
 
-;; Return new content since last update
+;; Set the Return new content since last update
 ;; if there is no new content, wait for some
 (defn ajaxrepl-out []
-  (let [repl-messages (repl-session)]
-    (dbg repl-messages)
-    (dosync        
-     (let [output (reduce str
-                          (interleave @repl-messages (repeat "\n")))]
-       (dbg "sending: " output)
-       (send-output "text/plain" output))
-     (ref-set repl-messages []))))
+  (. *response* (setContentType "text/plain"))
+  (send (repl-session) (. *response* (getWriter))))
 (publish ajaxrepl-out "/ajaxrepl-out")
 
 (defn ajaxrepl-eval [str]
   (eval (read (new java.io.PushbackReader (new java.io.StringReader str)))))
 
 (defn ajaxrepl-in []
-  (dosync
-   (let [repl-messages (repl-session)
-         input (slurp-post-data)]
-     (alter repl-messages conj (ajaxrepl-eval input))
-     (send-output "text/plain" "OK"))))
+  (send (repl-session) (ajaxrepl-eval (slurp-post-data))))
 (publish ajaxrepl-in "/ajaxrepl-in")
 
 		      

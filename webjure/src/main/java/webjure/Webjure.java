@@ -30,11 +30,10 @@ import clojure.lang.RT;
  */
 public class Webjure {
 
-    private static final String INIT_SCRIPT = "webjure/webjure.clj";
+    private static final String INIT_SCRIPT = "webjure.clj";
 
     private static Logger log = Logger.getLogger(Webjure.class.getName());
     static {
-	System.out.println("INITI!!!!");
 	try {
 	    log.info("Initializing Webjure.");
 	    RT.loadResourceScript(INIT_SCRIPT);

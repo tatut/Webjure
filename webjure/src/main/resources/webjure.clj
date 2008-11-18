@@ -232,7 +232,7 @@
 	       (if (nil? binding)
 		 forms
 		 (recur 
-		  (concat (apply generate-request-binding binding) forms)
+		  (concat forms (apply generate-request-binding binding))
 		  (split-at 2 (second splits))))))] 
      ~@body))
 

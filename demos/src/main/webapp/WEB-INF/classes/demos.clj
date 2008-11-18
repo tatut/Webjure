@@ -5,7 +5,8 @@
     (:refer-clojure)
     (:use webjure)
     (:use webjure.html)
-    (:use webjure.sql))
+    (:use webjure.sql)
+    (:use webjure.xml.feeds))
 
 
 (defn dbg [& u]
@@ -24,6 +25,7 @@
       (:li (:a {:href ~(url "/info" {:some "value" :another "one"})} "Dump request info"))
       (:li (:a {:href ~(url "/dbtest")} "Database test"))
       (:li (:a {:href ~(url "/session")} "Session test"))
+      (:li (:a {:href ~(url "/clojurenews")} "Clojure news (Atom feed parser test)"))
       (:li (:a {:href ~(url "/ajaxrepl")} "an AJAX REPL")))
      
      
@@ -146,12 +148,16 @@
 ;;; A REPL using Refs 
 
 (defn repl-session []
-  (session-get "repl-messages" (fn [] (agent []))))
+  (session-get "repl-messages" (fn [] (binding [*use-context-classloader* true]
+					(agent [])))))
      
 (defn repl-write [messages new-msg]
-  (conj new-msg messages))
+  (let [messages (conj new-msg messages)]
+    (prn messages)
+    messages))
 
 (defn repl-fetch [messages writer]
+  (. writer (append "FOO"))
   (. writer (append (reduce str (interleave messages (repeat "\n")))))
   ;; new state is no messages
   [])
@@ -161,14 +167,18 @@
 ;; if there is no new content, wait for some
 (defn ajaxrepl-out []
   (. *response* (setContentType "text/plain"))
-  (send (repl-session) (. *response* (getWriter))))
+  (. (. *response* (getWriter)) (append (reduce str (interleave @(repl-session) (repeat "\n")))))
+  (binding [*use-context-classloader* true] 
+    (send (repl-session) (fn [msgs] []))))
+
 (publish ajaxrepl-out "/ajaxrepl-out")
 
 (defn ajaxrepl-eval [str]
-  (eval (read (new java.io.PushbackReader (new java.io.StringReader str)))))
+  (str (eval (read (new java.io.PushbackReader (new java.io.StringReader str))))))
 
 (defn ajaxrepl-in []
-  (send (repl-session) (ajaxrepl-eval (slurp-post-data))))
+  (binding [*use-context-classloader* true]
+    (send (repl-session) repl-write (ajaxrepl-eval (slurp-post-data)))))
 (publish ajaxrepl-in "/ajaxrepl-in")
 
 		      
@@ -186,3 +196,20 @@
         greeting))))
 
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Atom feed parser test
+
+(defh "/clojurenews" []
+  {:output :html}
+  (with-open 
+   [url (.openStream (new java.net.URL "http://clojure.blogspot.com/feeds/posts/default"))]
+   (let [feed (load-atom1-feed url)]
+     `(:html 
+       (:head (:title ~(feed :title)))
+       (:body 
+	(:h3 ~(feed :subtitle))
+	(:ul
+	 ~@(map (fn [entry]
+		    `(:li (:a {:href ~(((entry :links) "alternate") :url)} ~(entry :title))))
+		(feed :entries))))))))

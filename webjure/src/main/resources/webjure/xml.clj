@@ -61,8 +61,9 @@
 ;;;   ["one" "two" "three"]
 
 
-(in-ns 'xmlparse)
-(clojure/refer 'clojure)
+(ns webjure.xml
+    (:refer-clojure))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; DOM utilities and accessors ;;
@@ -101,7 +102,7 @@
   (let [attr-node (. node (getAttributeNode name))]
     (and attr-node (. attr-node (getValue)))))
 
-(defn lazy-child [#^org.w3c.dom.NodeList node-list i last]
+(defn #^{:private true} lazy-child [#^org.w3c.dom.NodeList node-list i last]
   (lazy-cons (. node-list (item i))
              (if (== i last) nil (lazy-child node-list (+ i 1) last))))
                  
@@ -154,7 +155,7 @@
   (= :error (first state)))
 
 ;; Run the given sub-parsers on node 
-(defn subs [node current-state parsers]
+(defn #^{:private true} run-sub-parsers [node current-state parsers]
   (loop [ps parsers
          state current-state]
     (if (or (error-state? state) 
@@ -171,11 +172,11 @@
             (nil? ch))
       state
       (recur (rest ch)
-             (subs (first ch) state parsers)))))
+             (run-sub-parsers (first ch) state parsers)))))
     
 
 (defn parse [tree initial-state & parsers]
-  (let [res (subs tree (yield initial-state) parsers)]
+  (let [res (run-sub-parsers tree (yield initial-state) parsers)]
     (if (error-state? res)
       res
       (second res))))
@@ -185,11 +186,12 @@
 ;; This can be used to change state for sub parsers.
 (defn parse* [new-state & parsers]
   (fn [node]
-      (let [res (subs node (yield new-state) parsers)]
+      (let [res (run-sub-parsers node (yield new-state) parsers)]
         (if (error-state? res)
           res
           (second res)))))
 
+(def p* parse*) ;; short hand for parse* 
 
 ;; Evaluate exprs for side-effects, does not change state
 (defmacro => [nodesym statesym & exprs]
@@ -250,7 +252,7 @@
             (error parent "Element " (name-of parent) " does not have required attribute " attr-name)
             
             (if (or (nil? attr-value) (matches? attr-value (. attr-node (getValue))))
-              (subs attr-node state sub-parsers)
+              (run-sub-parsers attr-node state sub-parsers)
               (error parent "Element attribute " attr-name " does not match " attr-value)))))))
 
         
@@ -270,7 +272,7 @@
 ;;                 (error (cons parent {Element [(.getNodeName parent)] doesn't have required attribute [name]}))
 
 ;;                 (if (or (not (pair? attr-spec)) (and value (string=? value (.getValue attr))))
-;;                     (subs attr sub-parsers error)
+;;                     (run-sub-parsers attr sub-parsers error)
 ;;                     (error (cons parent {Attribute [name] doesn't have the required value [value]})))))))))
 
 ;;; Catch failures of the sub-parsers and continue as if
@@ -279,7 +281,7 @@
   (fn [node]
       ;; PENDING: Should we catch each sub-parsers separately?
       ;; We could wrap then in fns that catch exceptions
-      (try (subs node sub-parsers)
+      (try (run-sub-parsers node sub-parsers)
            (catch java.lang.RuntimeException x true))))
 
 
@@ -317,6 +319,15 @@
 (defmacro collect 
   ([] (collect identity))
   ([fun] `(=> elt# st#
-	      ;; FIXME: (ylle myös) tee value-or-error (joka yieldaa jos ok, muuten palauttaa virheen)
 	      (yield (conj st# (~fun elt#))))))
   
+
+;; Modify state by applying a function to the previous state and the element
+(defmacro modify [fun]
+  `(=> elt# st#
+       (yield (~fun st# elt#))))
+
+(defmacro modify-key [key fun]
+  `(=> elt# st# 
+       (yield (assoc st#
+		     ~key (~fun (st# ~key) elt#)))))

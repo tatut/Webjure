@@ -9,6 +9,8 @@
   if a Number it is considered a regular expression group index.
   You can also use :group key in a map accessor.
 
+  Fixed multiple request parameters bug. 
+
 2008-11-18:
 
   Refactored XML parsing and feed support.

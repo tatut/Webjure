@@ -19,11 +19,19 @@ public interface Request {
     /**
      * Get a request parameter by name.
      * 
-     * @param name
+     * @param name the parameter name
      * @return
      */
     public String getParameter(String name);
-   
+    
+    /**
+     * Get all values of a reqeust parameter.
+     *
+     * @param name the parameter name
+     * @return the values as array
+     */
+    public String[] getParameterValues(String name);
+
     /**
      * Return the parameter names in this request.
      * 

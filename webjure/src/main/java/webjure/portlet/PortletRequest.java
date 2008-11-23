@@ -34,6 +34,10 @@ public class PortletRequest implements Request {
         return request.getParameter(name);
     }
 
+    public String[] getParameterValues(String name) {
+	return request.getParameterValues(name);
+    }
+
     public Map<String, String[]> getParameterMap() {
         return (Map<String,String[]>) request.getParameterMap();
     }

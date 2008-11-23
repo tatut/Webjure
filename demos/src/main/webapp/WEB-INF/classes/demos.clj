@@ -27,7 +27,8 @@
       (:li (:a {:href ~(url "/session")} "Session test"))
       ;;(:li (:a {:href ~(url "/ajaxrepl")} "an AJAX REPL"))
       (:li (:a {:href ~(url "/clojurenews")} "Clojure news (Atom feed parser test)"))
-      (:li (:a {:href ~(url "/hello/Test")} "Test path binding")))
+      (:li (:a {:href ~(url "/hello/Test")} "Test path binding"))
+      (:li (:a {:href ~(url "/json?foo=bar&quux=baz")} "Return request info as JSON")))
      
      (:div {:style "position: relative; left: 50%;"}
            (:div {:style "text-align: center; width: 300px; position: absolute; left: -150; border: dotted black 2px; background-color: yellow; padding: 10px;"}
@@ -230,3 +231,12 @@
      ~@(if (nil? last-name)
 	 `((:a {:href ~(url (str "/hello/" first-name "/Something"))}
 	       "try with another path component"))))))
+
+
+;;;;;;;;;;;;;;
+;; json test
+
+(defh "/json" []
+  {:output :json}
+  {"headers" (request-headers)
+   "parameters" (request-parameters)})

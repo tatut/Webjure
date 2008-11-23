@@ -1,6 +1,13 @@
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Webjure - a web framework for Clojure
+;;
+;; Author: Tatu Tarvainen
+;;
+
 (ns webjure
-    (:refer-clojure))
+    (:refer-clojure)
+    (:require (webjure html json)))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Global vars 
@@ -352,12 +359,20 @@
 (defmacro defh [url request-bindings options & body]
   `(publish (fn []
               (request-bind ~request-bindings
-                            ~@(if (= :html (:output options))
-                                `(do
-                                   (. *response* (setContentType "text/html"))
-                                   (webjure.html/html-format (response-writer)
-                                                (do ~@body)))
-                                body)))
+                            ~@(cond
+			       (= :html (options :output))
+			       `(do
+				  (. *response* (setContentType "text/html"))
+				  (webjure.html/html-format (response-writer)
+							    (do ~@body)))
+
+			       (= :json (options :output))
+			       `(do
+				  (. *response* (setContentType "application/json"))
+				  (webjure.json/serialize (response-writer)
+							  (do ~@body)))
+
+			       :default body)))
 	    ~url))
 
   

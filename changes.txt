@@ -11,6 +11,12 @@
 
   Fixed multiple request parameters bug. 
 
+  Added JSON serialization support. See webjure.json namespace.
+  Also supported in defh automagic by using {:output :json} and 
+  anything the body returns will be JSONified and sent to the client
+  with application/json content type.
+
+
 2008-11-18:
 
   Refactored XML parsing and feed support.

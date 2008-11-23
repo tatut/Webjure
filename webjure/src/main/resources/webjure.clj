@@ -10,6 +10,8 @@
 (def #^webjure.Request *request*) 
 (def #^webjure.Response *response*) 
 
+(def #^{:private true :doc "The matched handler info is bound in here during dispatch."}
+     *matched-handler* nil)
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -51,33 +53,45 @@
 ;; Handler dispatch
 
 ;; List of handlers as [fn url-pattern]
-(def *handlers* (list))
+(def *handlers* (ref (list)))
 
 ;; This is called to register a handler
 (defn 
-  #^{:doc "Publish a handler function for the given URL pattern."}
+  #^{:doc "Publish a handler function for the given URL pattern. The pattern may be a string or a regular expression pattern."}
   publish [fn url-pattern]
   (if (not (instance? clojure.lang.IFn fn))
     (throw (new java.lang.IllegalArgumentException "First argument must be function")))
-  (def *handlers*
-       (conj *handlers*
-             [fn url-pattern])))
+  (dosync 
+   (ref-set *handlers*
+	    (conj @*handlers*
+		  [fn url-pattern]))))
 
 (defn 
-  #^{:private true}
-  handler-matches? [handler pattern]
-  (let [url-pattern (second handler)]
-    (or
-     (and (ends-with? url-pattern "*")
-	  (starts-with? pattern (substr url-pattern 0 (- (strlen url-pattern) 1)))
-	  true)
-     (and (= pattern url-pattern)))))
+  #^{:private true :doc "Check if handler matches the input URL. Returns a match object (map) or nil."}
+  handler-matches? [[handler-fn url-pattern] pattern]
+  (cond
+   (instance? java.util.regex.Pattern url-pattern)
+   (let [m (re-seq url-pattern pattern)]
+     (if m
+       {:handler handler-fn
+        :priority 0
+        :arguments m}
+	nil))
+    
+   (or (and (ends-with? url-pattern "*")
+	    (starts-with? pattern (substr url-pattern 0 (- (strlen url-pattern) 1)))
+	    true)
+       (and (= pattern url-pattern)))
+   {:handler handler-fn :priority (strlen url-pattern)}))
+
 
 (defn 
   #^{:private true}
   find-handler [url-pattern]
-  (let [matching-handlers (filter (fn [handler] (handler-matches? handler url-pattern)) *handlers*)
-	shortest-match    (first (sort-by (fn [handler] (strlen (second handler))) matching-handlers))]
+  (let [matching-handlers (filter #(not (nil? %))
+				  (map (fn [handler] 
+					   (handler-matches? handler url-pattern)) @*handlers*))
+	shortest-match    (first (sort-by :priority matching-handlers))]
     shortest-match))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -274,14 +288,14 @@
 		#^webjure.Response response]
   (binding [*request* request
 	    *response* response]
-    (let [handler (first (find-handler (request-path *request*)))]
-      (if (= nil handler)
+    (binding [*matched-handler* (find-handler (request-path *request*))]
+      (if (= nil *matched-handler*)
 	;; No handler found, give a 404
 	;; PENDING: Add 404-handler support (a special dispatch url, like :default)
 	(send-error 404 (str "No matching handler found for path: " (request-path request)))
 	
 	;; Run the handler
-	(handler)))))
+	((*matched-handler* :handler))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -25,9 +25,9 @@
       (:li (:a {:href ~(url "/info" {:some "value" :another "one"})} "Dump request info"))
       (:li (:a {:href ~(url "/dbtest")} "Database test"))
       (:li (:a {:href ~(url "/session")} "Session test"))
+      ;;(:li (:a {:href ~(url "/ajaxrepl")} "an AJAX REPL"))
       (:li (:a {:href ~(url "/clojurenews")} "Clojure news (Atom feed parser test)"))
-      (:li (:a {:href ~(url "/ajaxrepl")} "an AJAX REPL")))
-     
+      (:li (:a {:href ~(url "/hello/Test")} "Test path binding")))
      
      (:div {:style "position: relative; left: 50%;"}
            (:div {:style "text-align: center; width: 300px; position: absolute; left: -150; border: dotted black 2px; background-color: yellow; padding: 10px;"}
@@ -213,3 +213,20 @@
 	 ~@(map (fn [entry]
 		    `(:li (:a {:href ~(((entry :links) "alternate") :url)} ~(entry :title))))
 		(feed :entries))))))))
+
+
+;;;;;;;;;;;;;;;;;;;;
+;; defh regex test
+
+(defh #"/hello/(.+?)(/(.+))?$" 
+  [first-name 1
+   last-name 3]
+  {:output :html}
+
+  `(:html
+    (:body
+     (:p "Hello " ~first-name " " ~(or last-name ""))
+
+     ~@(if (nil? last-name)
+	 `((:a {:href ~(url (str "/hello/" first-name "/Something"))}
+	       "try with another path component"))))))

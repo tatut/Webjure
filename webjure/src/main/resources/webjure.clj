@@ -10,7 +10,7 @@
 (def #^webjure.Request *request*) 
 (def #^webjure.Response *response*) 
 
-(def #^{:private true :doc "The matched handler info is bound in here during dispatch."}
+(def #^{:doc "The matched handler info is bound here during dispatch."}
      *matched-handler* nil)
 
 
@@ -71,11 +71,11 @@
   handler-matches? [[handler-fn url-pattern] pattern]
   (cond
    (instance? java.util.regex.Pattern url-pattern)
-   (let [m (re-seq url-pattern pattern)]
+   (let [m (re-find url-pattern pattern)]
      (if m
        {:handler handler-fn
         :priority 0
-        :arguments m}
+        :groups m}
 	nil))
     
    (or (and (ends-with? url-pattern "*")
@@ -220,14 +220,23 @@
        
        
 (defn generate-request-binding [sym accessor]
-  (if (instance? java.lang.String accessor)
-    `[~sym (request-parameter ~accessor)]
-    (let [multi (:multiple accessor)
-	  name (:name accessor)
-	  validator (or (:validator accessor) 'identity)]
-      (if multi
-	`[~sym (map ~validator (multi-request-parameter ~name))]
-	`[~sym (~validator (request-parameter ~name))]))))
+  (cond 
+   (instance? String accessor)
+   `[~sym (request-parameter ~accessor)]
+
+   (instance? Number accessor)
+   `[~sym (nth (*matched-handler* :groups) ~accessor)]
+
+   :default
+   (let [multi (:multiple accessor)
+	 name (:name accessor)
+	 group (:group accessor)
+	 validator (or (:validator accessor) 'identity)]
+     `[~sym ~(if group
+	       `(~validator (nth (*matched-handler* :groups) ~group))
+	       (if multi
+		 `(map ~validator (multi-request-parameter ~name))
+		 `(~validator (request-parameter ~name))))])))
 
 ;; Bind request parameters (GET/POST) to variables
 ;; A binding is a symbol and an access definition.

@@ -4,7 +4,7 @@
 ;;
 ;; Author: Tatu Tarvainen
 ;; Since: 2008-11-23 
-;;
+;; Time-stamp: <2009-05-12 14:19:49>
 
 (ns webjure.json
     (:refer-clojure))
@@ -32,15 +32,15 @@
 (defmethod serialize :map [out the-map]
   (.append out "{")
   (loop [first-entry true
-	 keys (keys the-map)]
-    (if (not (nil? keys))
-      (let [k (first keys)]
-	(if (not first-entry)
-	  (.append out ", "))
-	(serialize out k) 
-	(.append out ": ")
-	(serialize out (the-map k))
-	(recur false (rest keys)))))
+	 entries the-map]
+    (when-let [[key value] (first entries)]
+	(do 
+	  (if (not first-entry)
+	    (.append out ", "))
+	  (serialize out key) 
+	  (.append out ": ")
+	  (serialize out value)
+	  (recur false (rest entries)))))
   (.append out "}"))
 
 (def +control-chars-replacements+ 
@@ -56,7 +56,7 @@
   (.append out "\"")
   (loop [string string
          ctrls +control-chars-replacements+]
-    (if (nil? ctrls)
+    (if (empty? ctrls)
       (.append out string)
       (let [[ctrl replacement] (first ctrls)]
 	(recur (.replace string ctrl replacement)
@@ -70,7 +70,7 @@
   (.append out "[")
   (loop [first-element true
 	 things (seq things)]
-    (if (nil? things)
+    (if (empty? things)
       (.append out "]")
       (do (if (not first-element)
 	    (.append out ", "))

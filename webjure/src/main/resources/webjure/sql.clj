@@ -15,10 +15,9 @@
     ;; Set query arguments
     (loop [i 1
 	   args query-args]
-      (if (not (= nil args))
-	(do
-	  (. stmt (setObject i (first args)))
-	  (recur (+ 1 i) (rest args)))))
+      (when-let [arg (first args)]
+	  (. stmt (setObject i arg))
+	(recur (+ 1 i) (rest args))))
     stmt))
   
 (defn #^{:private true}

@@ -136,7 +136,7 @@
        (loop [acc {} 
               header-names (enumeration->list 
                             (. request (getHeaderNames)))]
-         (if (= nil header-names)
+         (if (empty? header-names)
            acc
            (let [name (first header-names)]
              (recur (assoc acc name (enumeration->list (. request (getHeaders name))))
@@ -217,12 +217,11 @@
      (let [param-map (. request (getParameterMap))]
        (loop [acc {}
               param-names (seq (. param-map (keySet)))]
-         (if (nil? param-names)
+         (if (empty? param-names)
            acc
-           (recur
-            (assoc acc
-              (first param-names) (seq (. param-map (get (first param-names)))))
-            (rest param-names)))))))
+	   (let [name (first param-names)]
+	     (recur (assoc acc name (seq (. param-map (get name))))
+		    (rest param-names))))))))
 
        
        
@@ -259,7 +258,7 @@
   `(let [~@(loop [forms nil
                   splits (split-at 2 bindings)]
 	     (let [binding (first splits)]
-	       (if (nil? binding)
+	       (if (empty? binding)
 		 forms
 		 (recur 
 		  (concat forms (apply generate-request-binding binding))

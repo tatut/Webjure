@@ -4,13 +4,13 @@
   <groupId>webjure</groupId>
   <artifactId>webjure</artifactId>
   <packaging>jar</packaging>
-  <version>0.3-SNAPSHOT</version>
+  <version>0.4-SNAPSHOT</version>
   <name>webjure</name>
 
   <parent>
     <groupId>webjure</groupId>
     <artifactId>webjure-top</artifactId>
-    <version>0.3-SNAPSHOT</version>
+    <version>0.4-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -31,7 +31,7 @@
     <dependency>
       <groupId>jvm.clojure</groupId>
       <artifactId>clojure-lang</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
 
   </dependencies>

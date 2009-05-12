@@ -102,17 +102,17 @@
   (let [attr-node (. node (getAttributeNode name))]
     (and attr-node (. attr-node (getValue)))))
 
-(defn #^{:private true} lazy-child [#^org.w3c.dom.NodeList node-list i last]
-  (lazy-cons (. node-list (item i))
-             (if (== i last) nil (lazy-child node-list (+ i 1) last))))
-                 
 ;; Return all children as a list
 (defn children [#^org.w3c.dom.Node parent]
-  (let [all-children (. parent (getChildNodes))
+  (let [#^org.w3c.dom.NodeList 
+	all-children (. parent (getChildNodes))
         child-count (. all-children (getLength))]
-    (if (= 0 child-count)
-      []
-      (lazy-child all-children 0 (- child-count 1)))))
+    (loop [i 0
+	   acc []]
+      (if (== i child-count)
+	acc
+	(recur (+ i 1)
+	       (conj acc (. all-children (item i))))))))
 
 
 (defn child-elements [#^org.w3c.dom.Element parent]
@@ -159,7 +159,7 @@
   (loop [ps parsers
          state current-state]
     (if (or (error-state? state) 
-            (nil? ps))
+            (empty? ps))
       state
       (recur (rest ps)
 	     ((first ps) node state)))))
@@ -169,7 +169,7 @@
   (loop [ch children
          state current-state]
     (if (or (error-state? state)
-            (nil? ch))
+            (empty? ch))
       state
       (recur (rest ch)
              (run-sub-parsers (first ch) state parsers)))))
@@ -289,7 +289,7 @@
 (defn || [& sub-parsers]
   (fn [node state]
       (loop [sp sub-parsers]
-        (if (nil? sp)
+        (if (empty? sp)
           ;; No sub-parser succeeded, throw an exception
           (error node "OR operator failed for node " (name-of node))
 

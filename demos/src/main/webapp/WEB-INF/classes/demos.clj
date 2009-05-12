@@ -203,17 +203,17 @@
 
 (defh "/clojurenews" []
   {:output :html}
-  (with-open 
-   [url (.openStream (new java.net.URL "http://clojure.blogspot.com/feeds/posts/default"))]
-   (let [feed (load-atom1-feed url)]
-     `(:html 
-       (:head (:title ~(feed :title)))
-       (:body 
-	(:h3 ~(feed :subtitle))
-	(:ul
-	 ~@(map (fn [entry]
-		    `(:li (:a {:href ~(((entry :links) "alternate") :url)} ~(entry :title))))
-		(feed :entries))))))))
+  (with-open [url (.openStream (new java.net.URL "http://clojure.blogspot.com/feeds/posts/default"))]
+      (let [feed (load-atom1-feed url)]
+	(do (println (str feed))
+	    `(:html 
+	      (:head (:title ~(feed :title)))
+	      (:body 
+	       (:h3 ~(feed :subtitle))
+	       (:ul
+		~@(map (fn [entry]
+			 `(:li (:a {:href ~(((entry :links) "alternate") :url)} ~(entry :title))))
+		       (feed :entries)))))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;

@@ -1,3 +1,7 @@
+2009-05-12:
+
+  Upgrade to Clojure 1.0.0. Mostly just removed nil punning usage.
+
 2008-11-23:
 
   Removed evil re-defing of *handlers*. It is now a ref.

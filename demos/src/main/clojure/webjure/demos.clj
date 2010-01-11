@@ -25,7 +25,7 @@
   (page 
    {:title "Webjure, a tiny web framework for Clojure"
     :content `((:h2 "Welcome to Webjure demos!")
-	       (:p "demos, blaa blaa")
+	       (:p "Hero are the demos.")
 	       (:ul ~@(menu 
 		       [(url "/index") "This page, a simple sexp markup page"]
 		       [(url "/info" {:some "value" :another "one"}) "Dump request info"]
@@ -34,11 +34,11 @@
 		       [(url "/clojurenews") "Clojure news (Atom feed parser test)"]
 		       [(url "/hello/Test") "Test path binding"]
 		       [(url "/json?foo=bar&quux=baz") "Return request info as JSON"]))
-	       (:div {:style "position: relative; left: 50%;"}
-		     (:div {:style "text-align: center; width: 300px; position: absolute; left: -150; border: dotted black 2px; background-color: yellow; padding: 10px;"}
-			   (:b "Important notice: ") "Have a nice and RESTful day!"
-			   (:br)
-			   (:div {:style "font-size: small;"} ~(format-date "dd.MM.yyyy hh:mm")))))	       
+	       (:hr)
+	       (:p 
+		(:b "Important notice: ") "Have a nice and RESTful day!"
+		(:br)
+		(:div {:style "font-size: small;"} ~(format-date "dd.MM.yyyy hh:mm"))))
     }))
          
 
@@ -275,6 +275,7 @@
 	   (:div {:id "columnB"}
 		 (:h2 "Recent Updates")
 		 (:p (:strong "January 11 2010") 
+		     (:br)
 		     "Updated to 0.5-SNAPSHOT, now works with Clojure 1.1 and does AOT compiling."))
 		 
 	   (:div {:style "clear: both;"} "&nbsp;"))

@@ -30,7 +30,7 @@ A hello world in Webjure is very simple:
 
 ## Installation
 
-To install, you will need Apachce Maven 2. You will also need to manually install (or deploy, if you host your own Maven repository) the Clojure 1.0.0 jar file for Maven to find it.
+To install, you will need Apachce Maven 2. You will also need to manually install (or deploy, if you host your own Maven repository) the Clojure 1.1 jar file for Maven to find it.
 
 Run "mvn install" in the main directory.
 

@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.logging.Logger;
 
 import javax.servlet.ServletException;
+import javax.servlet.UnavailableException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -55,11 +56,19 @@ public class WebjureServlet extends HttpServlet {
     */
 
 
-    private void load(String file) {
+    private void load(String file) throws ServletException {
 	try {
 	    Webjure.loadFromResource(file);
 	} catch(Exception e) {
 	    loadFailure(file, e);
+	}
+    }
+
+    private void loadNamespace(String ns) throws ServletException {
+	try {
+	    Class.forName(ns+"__init");
+	} catch(Exception e) {
+	    loadFailureNS(ns, e);
 	}
     }
     
@@ -72,9 +81,20 @@ public class WebjureServlet extends HttpServlet {
      * @param file path relative to context root of the file
      * @param e the exception that occured
      */
-    protected void loadFailure(String file, Exception e) {
-	log("Unable to load clojure script '" + file + "'.", e);
-	throw new RuntimeException(e);
+    protected void loadFailure(String file, Exception e) throws ServletException {
+	log("Unable to load Clojure script '" + file + "'.", e);
+	throw new UnavailableException("Failed to load Clojure script: "+file+". See log for error details.");
+    }
+    
+    /**
+     * React to AOT compiled namespace loading failure.
+     *
+     * @param ns the namespace that failed to load
+     * @param e the exception that occured
+     */
+    protected void loadFailureNS(String ns, Exception e) throws ServletException {
+	log("Unable to load namespace '"+ns+"'.", e);
+	throw new UnavailableException("Failed to load namespace: "+ns+". See log for error details.");
     }
     
     /**
@@ -93,21 +113,28 @@ public class WebjureServlet extends HttpServlet {
 	String startup = getServletConfig().getInitParameter("startup");
 	return startup == null ? new String[0] : new String[] { startup };
     }
+
+    protected String[] getStartupNamespaces() {
+	String startup = getServletConfig().getInitParameter("startupNamespace");
+	return startup == null ? new String[0] : new String[] { startup };
+    }
     
     public void init() throws ServletException {
 	
 	/* Load webjure */
 	
 	dispatch = Webjure.getFunction("webjure/dispatch");
-	
-	
+		
 	/* Load application startup scripts, if any */
 	String[] startupScripts = getStartupScripts();
-	if (startupScripts != null) {
-	    for (String script : startupScripts)
-		load(script);
+	for (String script : startupScripts) {
+	    load(script);	
 	}
-	
+
+	/* Load AOT compiled namespaces */
+	for(String ns : getStartupNamespaces()) {
+	    loadNamespace(ns);
+	}
 	
 	/* Start shell listener */
 	String shell = getServletContext().getInitParameter("shell");

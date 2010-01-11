@@ -19,8 +19,8 @@
 					   (assoc %1 (lnk :rel) lnk))))
 
 	 (<>? "author"
-	      (<> "email" (collect-as :email text))
-	      (<> "name" (collect-as :author text)))))
+	      (<>? "email" (collect-as :email text))
+	      (<>? "name" (collect-as :author text)))))
 
 (defn load-atom1-feed [file-or-istream]
   (parse

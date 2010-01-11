@@ -30,17 +30,14 @@ import clojure.lang.RT;
  */
 public class Webjure {
 
-    private static final String INIT_SCRIPT = "webjure.clj";
-
     private static Logger log = Logger.getLogger(Webjure.class.getName());
     static {
 	try {
-	    log.info("Initializing Webjure.");
-	    RT.loadResourceScript(INIT_SCRIPT);
+	    log.info("Loading Webjure.");
+	    Class.forName("webjure__init"); /* static initializer loads our namespace */
+	    log.info("Loaded version: "+ Var.find(Symbol.intern("webjure/+version+")).get());	   
 	} catch(Exception e) {
-	    log.severe("Unable to load \""+INIT_SCRIPT+"\": "+e.getMessage());
-	    throw new WebjureException("Webjure initialization failed: "+e.getMessage(),
-				       e);
+	    throw new WebjureException("Webjure init failed: "+e.getMessage(), e);
 	}
     }
    
@@ -54,7 +51,6 @@ public class Webjure {
      */
     public static void loadFromResource(String file) throws Exception {
 	log.info("Loading script: "+file);
-	//clojure.lang.Compiler.load(new InputStreamReader(Webjure.class.getClassLoader().getResourceAsStream(file)));	
 	RT.loadResourceScript(file);
     }
     
@@ -71,7 +67,7 @@ public class Webjure {
      */
     public static IFn getFunction(String qualifiedName) {
 	try {
-	    return Var.find(Symbol.intern("webjure/dispatch")).fn();
+	    return Var.find(Symbol.intern(qualifiedName)).fn();
 	} catch(Exception e) {
 	    throw new WebjureException("getFunction(\""+qualifiedName+"\") failed: "+
 				       e.getMessage(), e);

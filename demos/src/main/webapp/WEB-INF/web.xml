@@ -10,23 +10,38 @@
   <servlet>
     <servlet-name>webjure</servlet-name>
     <servlet-class>webjure.servlet.WebjureServlet</servlet-class>
-    <init-param>
-      <!-- This is the clojure script that is loaded on startup (after webjure init script),
-           it is loaded using the ClassLoader so it should be in WEB-INF/classes or 
-	   in a .jar file in WEB-INF/lib 
 
-           If you just want to play with the shell, you can omit this entirely
-	   and no startup script will be loaded.
-      -->
+    <!-- This is the clojure script that is loaded on startup (after webjure init),
+         it is loaded using the ClassLoader so it should be in WEB-INF/classes or 
+	 in a .jar file in WEB-INF/lib 
+
+	 Note this is only used for source scripts, use startupNamespace for AOT
+	 namespaces to initialize.
+    <init-param>      
       <param-name>startup</param-name>      
       <param-value>demos.clj</param-value>
     </init-param>
+
+    -->
+
+    <!-- Names the namespace to load when initializing -->
+    <init-param>
+      <param-name>startupNamespace</param-name>
+      <param-value>webjure.demos</param-value>
+    </init-param>
+
+  </servlet>
+
+  <servlet>
+    <servlet-name>default</servlet-name>
+    <servlet-class>org.mortbay.jetty.servlet.DefaultServlet</servlet-class>
   </servlet>
 
   <servlet-mapping>
     <servlet-name>default</servlet-name>
-    <url-pattern>resource/*</url-pattern>
+    <url-pattern>/resource/*</url-pattern>
   </servlet-mapping>
+
 
   <servlet-mapping>
     <servlet-name>webjure</servlet-name>

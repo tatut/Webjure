@@ -12,6 +12,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Global vars 
 
+(def +version+ "Webjure 0.5")
+
 ;; The *request* and *response* vars are bound to the HttpServletRequest
 ;; and HttpServletResponse of the servlet request that is currently being handled
 (def #^webjure.Request *request*) 
@@ -360,10 +362,12 @@
               (request-bind ~request-bindings
                             ~@(cond
 			       (= :html (options :output))
-			       `(do
-				  (. *response* (setContentType "text/html"))
-				  (webjure.html/html-format (response-writer)
-							    (do ~@body)))
+			       `((let [out# (response-writer)
+				       doctype# ~(:doctype options)]
+				   (. *response* (setContentType "text/html"))		
+				   (if doctype#
+				     (append out# (str doctype# "\n")))
+				   (webjure.html/html-format out# (do ~@body))))
 
 			       (= :json (options :output))
 			       `(do

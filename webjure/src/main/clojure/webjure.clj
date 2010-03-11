@@ -72,7 +72,9 @@
     (throw (new java.lang.IllegalArgumentException "First argument must be function")))
   (dosync 
    (ref-set *handlers*
-	    (conj @*handlers*
+	    (conj (filter 
+		   #(not (= url-pattern (second %))) ; filter out previous handlers with the same pattern
+		   @*handlers*)
 		  [fn url-pattern]))))
 
 (defn 
@@ -361,6 +363,12 @@
   `(publish (fn []
               (request-bind ~request-bindings
                             ~@(cond
+
+			       ;; Output text/plain
+			       (= :text (options :output))
+			       `((send-output "text/plain" (do ~@body)))
+
+			       ;; Output HTML with optional doctype declaration
 			       (= :html (options :output))
 			       `((let [out# (response-writer)
 				       doctype# ~(:doctype options)]
@@ -369,6 +377,7 @@
 				     (append out# (str doctype# "\n")))
 				   (webjure.html/html-format out# (do ~@body))))
 
+			       ;; Output JSON 
 			       (= :json (options :output))
 			       `(do
 				  (. *response* (setContentType "application/json"))

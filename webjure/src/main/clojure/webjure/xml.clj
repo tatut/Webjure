@@ -123,13 +123,22 @@
   (reduce str (map (fn [#^org.w3c.dom.CharacterData x] (. x (getData)))
                    (filter (fn [x] (= :text (type-of x))) (children node)))))
 
-;;; Load an XML-file and return the DOM tree
-(defn load-dom [file-or-istream]
-  (let [builder (. (. javax.xml.parsers.DocumentBuilderFactory (newInstance)) (newDocumentBuilder))]
-    (. builder (parse #^java.io.InputStream
-                      (if (instance? java.io.File file-or-istream)
-                        (new java.io.FileInputStream #^java.io.File file-or-istream)
-                        file-or-istream)))))
+(defn new-document-builder []
+  (. (. javax.xml.parsers.DocumentBuilderFactory (newInstance)) (newDocumentBuilder)))
+
+;;; Load XML DOM from the given source 
+(defmulti load-dom class)
+(defmethod load-dom String [string] 
+  (.parse (new-document-builder)
+	  (org.xml.sax.InputSource. (java.io.StringReader. string))))
+  
+(defmethod load-dom java.io.File [file]
+  (load-dom (java.io.FileInputStream. file)))
+
+(defmethod load-dom java.io.InputStream [stream]
+  (.parse (new-document-builder) stream))
+
+
 
 (defn matches? [spec str]
   ;; PENDING: allow xpath style matching of word inside value 
@@ -256,24 +265,6 @@
               (error parent "Element attribute " attr-name " does not match " attr-value)))))))
 
         
-;;   (let ((name (if (pair? attr-spec)
-;;                   (car attr-spec)
-;;                   attr-spec))
-;;         (value (if (pair? attr-spec)
-;;                    (cadr attr-spec))))
-
-;;     (lambda (parent error)
-;;       (if (not (eqv? Node.ELEMENT_NODE$ (.getNodeType parent)))
-;;           (error (cons parent {Tried to check attribute on a non-element node: [parent]}))
-
-;;           (let ((attr (.getAttributeNode parent name)))
-            
-;;             (if (eq? attr #null)
-;;                 (error (cons parent {Element [(.getNodeName parent)] doesn't have required attribute [name]}))
-
-;;                 (if (or (not (pair? attr-spec)) (and value (string=? value (.getValue attr))))
-;;                     (run-sub-parsers attr sub-parsers error)
-;;                     (error (cons parent {Attribute [name] doesn't have the required value [value]})))))))))
 
 ;;; Catch failures of the sub-parsers and continue as if
 ;;; no error occured.

@@ -363,11 +363,17 @@
   `(publish (fn []
               (request-bind ~request-bindings
                             ~@(cond
-
+			       
+			       ;; Output CSV 
+			       (= :csv (options :output))
+			       `((.setContentType *response* (or ~(options :content-type) "text/csv"))
+				 (webjure.csv/csv-format (do ~@body)))
+				       
+				   
 			       ;; Output text/plain
 			       (= :text (options :output))
 			       `((send-output "text/plain" (do ~@body)))
-
+			       
 			       ;; Output HTML with optional doctype declaration
 			       (= :html (options :output))
 			       `((let [out# (response-writer)
@@ -379,10 +385,9 @@
 
 			       ;; Output JSON 
 			       (= :json (options :output))
-			       `(do
-				  (. *response* (setContentType "application/json"))
-				  (webjure.json/serialize (response-writer)
-							  (do ~@body)))
+			       `((. *response* (setContentType "application/json"))
+				 (webjure.json/serialize (response-writer)
+							 (do ~@body)))
 
 			       :default body)))
 	    ~url))

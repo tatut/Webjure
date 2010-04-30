@@ -27,10 +27,14 @@ A hello world in Webjure is very simple:
           (:body
            "Hello world!")))
 
+## Wiki
+
+A slightly more complex example. An in-memory wiki.
+<script src="http://gist.github.com/385152.js?file=wiki.clj"></script>
 
 ## Installation
 
-To install, you will need Apachce Maven 2. You will also need to manually install (or deploy, if you host your own Maven repository) the Clojure 1.1 jar file for Maven to find it.
+To install, you will need Apache Maven 2. You will also need to manually install (or deploy, if you host your own Maven repository) the Clojure 1.1 jar file for Maven to find it.
 
 Run "mvn install" in the main directory.
 

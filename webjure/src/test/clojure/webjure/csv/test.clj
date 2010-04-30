@@ -3,7 +3,7 @@
   (:refer-clojure)
   (:use clojure.test)
   (:use webjure.csv)
-  (:import (java.util Date))
+  (:import (java.util Date)))
 
 (defn csv [data]
   (with-out-str 
@@ -43,10 +43,10 @@
 			    {:name "Foo Barsky" :birthday (Date. 70 0 1)}]
 		     :headers [{:label "Name" :accessor :name} 
 			       {:label "Year born"
-				:accessor #(.getYear (:birthday %))}]
+				:accessor #(+ 1900 (.getYear (:birthday %)))}]
 		     :separator \|})
 	lines (seq (.split result "\n"))]
     
     (is (= (count lines) 4))
 
-    (is (= (second lines) "Tutte|1999"))))
+    (is (= (nth lines 2) "Tutte|1999"))))

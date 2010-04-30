@@ -28,9 +28,7 @@ A hello world in Webjure is very simple:
 
 ## Wiki
 
-A slightly more complex example. An in-memory wiki.
-
-http://gist.github.com/385152
+For a slightly more complex example, see [in-memory wiki](http://gist.github.com/385152).
 
 
 ## Installation

@@ -20,6 +20,7 @@
   ([out #^Object obj]
    (let [type (or (and (seq? obj) :seq)
 		  (and (string? obj) :string)
+		  (and (fn? obj) :fn)
 		  (. obj (getClass)))
 	      formatter (get +type-dispatch-table+ type)]
      (if (= nil formatter)
@@ -39,7 +40,7 @@
 	;; append the attribute value, replace disallowed " character with '
 	(append out " " (name kw) "=\"" (. (str (get attrs kw)) (replace "\"" "'"))
 		"\"")))
-    (if (= nil content)
+    (if (empty? content)
       (append out " />")
       (do	
 	(append out ">")
@@ -53,5 +54,6 @@
 (def #^{:private true} +type-dispatch-table+
   {:seq    html-format-tag
    :string html-format-string
+   :fn #(append %1 (%2))
    })
    

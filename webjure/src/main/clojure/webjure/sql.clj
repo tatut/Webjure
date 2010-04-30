@@ -11,14 +11,12 @@
 
 
 (defn prepare-statement [#^java.sql.Connection con query query-args]
-  (let [stmt (. con (prepareStatement query))]
+  (let [stmt (.prepareStatement con query)]
     ;; Set query arguments
-    (loop [i 1
-	   args query-args]
-      (when-let [arg (first args)]
-	  (. stmt (setObject i arg))
-	(recur (+ 1 i) (rest args))))
+    (doseq [i (range 0 (count query-args))]
+      (.setObject stmt (+ i 1) (nth query-args i)))
     stmt))
+
   
 (defn #^{:private true}
   dbg [& items]

@@ -6,7 +6,8 @@
     (:use webjure)
     (:use webjure.html)
     (:use webjure.sql)
-    (:use webjure.xml.feeds))
+    (:use webjure.xml.feeds)
+    (:use webjure.wiki))
 
 
 (defn dbg [& u]

@@ -30,7 +30,9 @@ A hello world in Webjure is very simple:
 ## Wiki
 
 A slightly more complex example. An in-memory wiki.
+
 <script src="http://gist.github.com/385152.js?file=wiki.clj"></script>
+
 
 ## Installation
 

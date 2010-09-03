@@ -1,4 +1,3 @@
-
 # Webjure, a web programming framework for Clojure
 
 ## Overview
@@ -30,10 +29,15 @@ A hello world in Webjure is very simple:
           (:body
            "Hello world!")))
 
+## Wiki
+
+For a slightly more complex example, see [in-memory wiki](http://gist.github.com/385152).
+
 
 ## Installation
 
-To install, you will need Apachce Maven 2. 
+
+To install, you will need Apache Maven 2. 
 
 Run "mvn install" in the main directory.
 

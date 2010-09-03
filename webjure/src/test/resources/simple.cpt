@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<foo xmlns:cpt="http://webjure.org/namespaces/cpt">
+<number cpt:repeat="n here" cpt:replace="n">
+  Nothign in here will be output... the whole element will be replaced by a number
+    <me>
+       <neither/>
+    </me>
+</number>
+</foo>

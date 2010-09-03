@@ -4,7 +4,7 @@
   <groupId>webjure</groupId>
   <artifactId>webjure-top</artifactId>
   <packaging>pom</packaging>
-  <version>0.6-SNAPSHOT</version>
+  <version>0.7-SNAPSHOT</version>
   <name>webjure-top</name>
   <url>http://github.com/tatut/Webjure</url>
 
@@ -35,5 +35,26 @@
       </releases>
     </pluginRepository>
   </pluginRepositories>  
-  
+    <dependencies>
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>servlet-api</artifactId>
+      <version>2.5</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+        <groupId>javax.portlet</groupId>
+        <artifactId>portlet-api</artifactId>
+        <version>1.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.clojure</groupId>
+      <artifactId>clojure</artifactId>
+      <version>1.2.0</version>
+    </dependency>
+
+  </dependencies>
+
 </project>

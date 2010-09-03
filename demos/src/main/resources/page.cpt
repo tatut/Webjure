@@ -1,0 +1,43 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:cpt="http://webjure.org/namespaces/cpt">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <title>$(or (:title here) "Webjure demos page")</title>
+    
+    <link href="$(base-url)/resource/default.css" rel="stylesheet" type="text/css"/>
+  </head>    
+  <body> 
+    <div id="header">
+      <h1>Webjure</h1>
+      <h2>By Free CSS Templates</h2>
+    </div> 
+    
+    <div id="menu">
+      <ul>
+	<li class="first"><a href="$(base-url)/index">Home</a></li>
+	<li><a href="http://github.com/tatut/Webjure">On Github</a></li>
+      </ul>
+    </div>
+    
+    <div id="content">
+      <div id="columnA">
+	$(:content here)
+      </div>
+      <div id="columnB">
+	<h2>Recent Updates</h2>
+	<p><strong>September 2 2010</strong>
+	<br/>Updated to 0.7-SNAPSHOT, now works with Clojure 1.2 and has page templates.</p>
+	<br/><br/>
+	<p><strong>January 11 2010</strong>
+	<br/>Updated to 0.5-SNAPSHOT, now works with Clojure 1.1 and does AOT compiling.</p>
+      </div>
+      
+      <div style="clear: both;">&#160;</div>
+    </div>
+    
+    <div id="footer">
+      <p>Copyright  2009-2010 Tatu Tarvainen. Designed by 
+      <a href="http://www.freecsstemplates.org" class="link1">Free CSS Templates</a></p>
+    </div>
+  </body>
+</html>

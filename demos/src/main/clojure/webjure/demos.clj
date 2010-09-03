@@ -7,7 +7,10 @@
     (:use webjure.html)
     (:use webjure.sql)
     (:use webjure.xml.feeds)
-    (:use webjure.wiki))
+    (:use webjure.wiki)
+    (:use webjure.cpt)
+    (:use swank.swank)
+    (:use clojure.stacktrace))
 
 
 (defn dbg [& u]
@@ -21,25 +24,39 @@
 
 (declare page)
 
-(defh "/index" [] {:output :html
-		   :doctype "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">"}
+(def *swank-started* (ref false))
+
+(defh "/start-swank" [port {:name "port" :validator #(if (nil? %) 4005 (Integer/parseInt %))}] 
+  {:output :text}
+  (if @*swank-started*
+    "Swank already started."
+    (dosync
+     (try (start-repl port)
+	  (ref-set *swank-started* true)
+	  (str "Swank started on port " port)
+	  (catch Exception e
+	    (str "Unable to start swank: " (with-out-str (print-cause-trace e))))))))
+
+(defh "/index" [] {:output :print}		   
   (page 
    {:title "Webjure, a tiny web framework for Clojure"
-    :content `((:h2 "Welcome to Webjure demos!")
-	       (:p "Hero are the demos.")
-	       (:ul ~@(menu 
-		       [(url "/index") "This page, a simple sexp markup page"]
-		       [(url "/info" {:some "value" :another "one"}) "Dump request info"]
-		       [(url "/dbtest") "Database test"]
-		       [(url "/session") "Session test"]
-		       [(url "/clojurenews") "Clojure news (Atom feed parser test)"]
-		       [(url "/hello/Test") "Test path binding"]
-		       [(url "/json?foo=bar&quux=baz") "Return request info as JSON"]))
-	       (:hr)
-	       (:p 
-		(:b "Important notice: ") "Have a nice and RESTful day!"
-		(:br)
-		(:div {:style "font-size: small;"} ~(format-date "dd.MM.yyyy hh:mm"))))
+    :content (html-format 
+	      `(span
+		(:h2 "Welcome to Webjure demos!")
+		(:p "Here are the demos.")
+		(:ul ~@(menu 
+			[(url "/index") "This page, a simple sexp markup page"]
+			[(url "/info" {:some "value" :another "one"}) "Dump request info"]
+			[(url "/dbtest") "Database test"]
+			[(url "/session") "Session test"]
+			[(url "/clojurenews") "Clojure news (Atom feed parser test)"]
+			[(url "/hello/Test") "Test path binding"]
+			[(url "/json?foo=bar&quux=baz") "Return request info as JSON"]))
+		(:hr)
+		(:p 
+		 (:b "Important notice: ") "Have a nice and RESTful day!"
+		 (:br)
+		 (:div {:style "font-size: small;"} ~(format-date "dd.MM.yyyy hh:mm")))))
     }))
          
 
@@ -124,71 +141,6 @@
       (:a {:href ~(url "/dbtest")} "&laquo; back to countries"))))
 
 
-
-;;;;;;;;;;;;;
-;; AJAX REPL
-;;
-;; a very simplistic version
-;; there were some problems with using PiperReader/-Writer approach
-;; with thread deadlocking... 
-
-
-
-;; The main page
-(defh "/ajaxrepl" [] {:output :html}
-  `(:html
-    (:head (:title "Webjure AJAX REPL")
-	   (:script {:type "text/javascript"
-		    :language "javascript"
-		    :src ~(url "/resource/repl.js")}))
-
-    (:body 
-     (:h3 "Webjure AJAX REPL")
-     (:div 
-      {:id "replout"
-      :style "width: 600px; height: 400px; overflow: auto; font-family: monospace; color: silver; background-color: black; white-space: pre;"}
-      "")
-     
-     (:form ;{:onsubmit "return write();"}
-      (:textarea {:onkeypress "keyHandler(event)" :id "replin" :style "width: 600px; height: 70px;"} "")))))
-
-;;; A REPL using Refs 
-
-(defn repl-session []
-  (session-get "repl-messages" (fn [] (binding [*use-context-classloader* true]
-					(agent [])))))
-     
-(defn repl-write [messages new-msg]
-  (let [messages (conj new-msg messages)]
-    (prn messages)
-    messages))
-
-(defn repl-fetch [messages writer]
-  (. writer (append "FOO"))
-  (. writer (append (reduce str (interleave messages (repeat "\n")))))
-  ;; new state is no messages
-  [])
-  
-
-;; Set the Return new content since last update
-;; if there is no new content, wait for some
-(defn ajaxrepl-out []
-  (. *response* (setContentType "text/plain"))
-  (. (. *response* (getWriter)) (append (reduce str (interleave @(repl-session) (repeat "\n")))))
-  (binding [*use-context-classloader* true] 
-    (send (repl-session) (fn [msgs] []))))
-
-(publish ajaxrepl-out "/ajaxrepl-out")
-
-(defn ajaxrepl-eval [str]
-  (str (eval (read (new java.io.PushbackReader (new java.io.StringReader str))))))
-
-(defn ajaxrepl-in []
-  (binding [*use-context-classloader* true]
-    (send (repl-session) repl-write (ajaxrepl-eval (slurp-post-data)))))
-(publish ajaxrepl-in "/ajaxrepl-in")
-
-		      
 ;;; Session test
 
 (defh "/session" [] {:output :html}
@@ -252,6 +204,10 @@
   {"headers" (request-headers)
    "parameters" (request-parameters)})
 
+(define-template page "src/main/resources/page.cpt")
+
+(comment
+
 (defn page [data]
   `(:html 
     {:xmlns "http://www.w3.org/1999/xhtml"}
@@ -284,3 +240,4 @@
 	   (:p "Copyright &copy; 2009-2010 Tatu Tarvainen. Designed by " 
 	       (:a {:href "http://www.freecsstemplates.org" :class "link1"} "Free CSS Templates"))))))
 
+)

@@ -135,7 +135,7 @@
 (defn request-headers 
   ([] (request-headers *request*))
   ([#^webjure.Request servlet-request]    
-     (let [#^javax.servlet.http.HttpServletRequest request 
+     (let [^javax.servlet.http.HttpServletRequest request 
            (. servlet-request (getActualRequest))]
        (loop [acc {} 
               header-names (enumeration->list 
@@ -151,7 +151,7 @@
 ;; based on the current request
 (defn base-url 
   ([] (base-url (. *request* (getActualRequest))))
-  ([#^javax.servlet.http.HttpServletRequest request]
+  ([^javax.servlet.http.HttpServletRequest request]
      (str (. request (getScheme))
 	  "://"
 	  (. request (getServerName))
@@ -162,8 +162,8 @@
 	  (. request (getContextPath)))))
 
 (defn 
-  #^{:private true}
-  create-servlet-url [#^javax.servlet.HttpServletRequest request path args]
+  ^{:private true}
+  create-servlet-url [^javax.servlet.HttpServletRequest request path args]
   (str
    (base-url request)
    path
@@ -178,8 +178,8 @@
                        (repeat "&")))))
                          
 (defn 
-  #^{:private true}
-  create-portlet-url [#^javax.portlet.PortletRequest request mode args] 
+  ^{:private true}
+  create-portlet-url [^javax.portlet.PortletRequest request mode args] 
   (let [url (if (= :action mode)
               (. *response* (createActionURL))
               (. *response* (createRenderURL)))]
@@ -190,9 +190,7 @@
 ;; Generate an HREF link.
 ;; For portlets the mode-or-path must be :action or :render
 ;; and for servlets it must be a string path element
-(defn 
-  #^{:doc "Generate an HREF URL given a path (or mode for portlets) and GET parameters."}
-  url 
+(defn url "Generate an HREF URL given a path (or mode for portlets) and GET parameters."
   ([mode-or-path] (url mode-or-path {}))
   ([mode-or-path args]
      (if (string? mode-or-path)
@@ -201,31 +199,27 @@
        ;; create action or render url for portlet
        (create-portlet-url (. *request* (getActualRequest)) mode-or-path args))))
 
-(defn 
-  #^{:doc "Get the value of a single valued request parameter."}
-  request-parameter [#^String name]
-  (. *request* (getParameter name)))
+(defn request-parameter "Get the value of a single valued request parameter."
+  [^String name]
+  (.getParameter *request* name))
 
-(defn 
-  #^{:doc "Get the values of a multi valued request parameter as a sequence."}
-  multi-request-parameter [#^String name]
-  (seq (. *request* (getParameterValues name))))
+(defn   
+  multi-request-parameter "Get the values of a multi valued request parameter as a sequence."
+  [^String name]
+  (seq (.getParameterValues *request* name)))
 
 ;; Return mapping {"param name" [values], ...}
 ;; of request parameters
-(defn 
-  #^{:doc "Return a mapping of parameter names to sequences of values."}
-  request-parameters 
+(defn request-parameters "Return a mapping of parameter names to sequences of values."
   ([] (request-parameters *request*))
-  ([#^webjure.Request request] 
-     (let [param-map (. request (getParameterMap))]
+  ([^webjure.Request request] 
+     (let [param-map (.getParameterMap request)]
        (loop [acc {}
-              param-names (seq (. param-map (keySet)))]
-         (if (empty? param-names)
+              [name & param-names] (seq (.keySet param-map))]
+         (if (nil? name)
            acc
-	   (let [name (first param-names)]
-	     (recur (assoc acc name (seq (. param-map (get name))))
-		    (rest param-names))))))))
+	   (recur (assoc acc name (seq (.get param-map name)))
+		  param-names))))))
 
        
        
@@ -276,24 +270,21 @@
 ;; the initial-value stored in the session and
 ;; returned. If initial-value is an IFn then
 ;; it is invoked to produce the value to store.
-(defn
-  #^{:doc "Get a stored value from the client session by key. Initial value (which may be a function that generates a value) will be used if specified and no value is stored in the session."}
-  session-get 
-  ([attribute] (. (. *request* (getSession)) (getAttribute attribute)))
+(defn session-get "Get a stored value from the client session by key. Initial value (which may be a function that generates a value) will be used if specified and no value is stored in the session."
+  ([attribute] (.getAttribute (.getSession *request*) attribute))
   ([attribute initial-value]
    (let [val (session-get attribute)]
      (if (nil? val)
        (let [new-value (if (instance? clojure.lang.IFn initial-value)
                          (initial-value)
                          initial-value)]
-	 (. (. *request* (getSession)) (setAttribute attribute new-value))
+	 (.setAttribute (.getSession *request*) attribute new-value)
 	 new-value)
        val))))
 
-(defn 
-  #^{:doc "Store a value by key in the client session."}
-  session-set [name value]
-  (. (. *request* (getSession)) (setAttribute name value)))
+(defn session-set "Store a value by key in the client session." 
+  [name value]
+  (.setAttribute (.getSession *request*) name value))
 
 (defn send-error 
   ([code message] (send-error *response* code message))
@@ -302,9 +293,9 @@
 
 
 ;; The main dispatch function. This is called from WebjureServlet
-(defn dispatch [#^String method 
-		#^webjure.Request request 
-		#^webjure.Response response]
+(defn dispatch [^String method 
+		^webjure.Request request 
+		^webjure.Response response]
   (binding [*request* request
 	    *response* response]
     (binding [*matched-handler* (find-handler (request-path *request*))]
@@ -320,39 +311,31 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Useful code for webjure apps
 
-(defn 
-  #^{:doc "Send string output to client with given content-type."} 
-  send-output 
+(defn send-output "Send string output to client with given content-type."
   ([content-type content] (send-output *response* content-type content))
-  ([#^webjure.Response response #^String content-type #^String content]
-   (. response (setContentType content-type))
-   (. (. response (getWriter)) (append content))))
+  ([^webjure.Response response ^String content-type ^String content]
+   (.setContentType response content-type)
+   (.append (.getWriter response) content)))
 
-(defn 
-  #^{:doc "Read POST data and return it as a  string."}
-  slurp-post-data 
+(defn slurp-post-data "Read POST data and return it as a  string."
   ([] (slurp-post-data *request*))
-  ([#^webjure.Request request]
-   (let [sb (new StringBuilder)
-	    in (new java.io.BufferedReader 
-                    (new java.io.InputStreamReader 
-                         (. (. request (getActualRequest)) (getInputStream))))]
-     (loop [ch (. in (read))]
-       (if (< ch 0)
-	 (. sb (toString))
-	 (do
-	   (. sb (append (char ch)))
-	   (recur (. in (read)))))))))
+  ([^webjure.Request request]
+     (let [sb (new StringBuilder)]
+       (with-open [in (new java.io.BufferedReader 
+			   (new java.io.InputStreamReader 
+				(.getInputStream (.getActualRequest request))))]
+	 (loop [ch (.read in)]
+	   (if (< ch 0)
+	     (.toString sb)
+	     (do
+	       (.append sb (char ch))
+	       (recur (.read in)))))))))
   
 
 
-(defn 
-  #^{:doc "Format date using a SimpleDateFormat pattern."
-     :test (fn [] (assert (= "01.01.1970" 
-                             (format-date "dd.MM.yyyy" (new java.util.Date (long 0))))))}
-  format-date
-  ([#^String fmt #^java.util.Date date] (. (new java.text.SimpleDateFormat fmt) (format date)))
-  ([#^String fmt] (. (new java.text.SimpleDateFormat fmt) (format (new java.util.Date)))))
+(defn format-date "Format date using a SimpleDateFormat pattern."
+  ([^String fmt ^java.util.Date date] (.format (java.text.SimpleDateFormat. fmt) date))
+  ([^String fmt] (.format (java.text.SimpleDateFormat. fmt) (java.util.Date.))))
 
 
 ;; Define a handler function
@@ -363,7 +346,12 @@
   `(publish (fn []
               (request-bind ~request-bindings
                             ~@(cond
-			       
+			       ;; Output anything that is printed
+			       (= :print (options :output))
+			       `((.setContentType *response* (or ~(options :content-type) "text/html"))
+				 (binding [*out* (response-writer)]
+				   ~@body))
+
 			       ;; Output CSV 
 			       (= :csv (options :output))
 			       `((.setContentType *response* (or ~(options :content-type) "text/csv"))

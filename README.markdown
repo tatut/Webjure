@@ -12,6 +12,9 @@ when defining handlers. It can be used to automatically read and parse
 input parameters (both parts of the URL path and GET/POST params).
 The defh can also automatically send the response as HTML or JSON.
 
+Webjure also provides Clojure Page Templates (see webjure.cpt namespace) 
+can be used for dynamic HTML templates similar to ZPT/JPT. The templates
+are compiled to bytecode for good performance.
 
 ## Hello world
 
@@ -30,7 +33,7 @@ A hello world in Webjure is very simple:
 
 ## Installation
 
-To install, you will need Apachce Maven 2. You will also need to manually install (or deploy, if you host your own Maven repository) the Clojure 1.1 jar file for Maven to find it.
+To install, you will need Apachce Maven 2. 
 
 Run "mvn install" in the main directory.
 
@@ -38,7 +41,8 @@ Run "mvn install" in the main directory.
 
 After installation is done, you can depend on the webjure jar in your own web projects (or just copy the .jar from the target directory). To check out the demos, go to the "demos" subdirectory and run "mvn jetty:run" and point your browser to http://localhost:8080/webjure-demos/index.
 
-Emacs users: To hack on the demos live set your inferior-lisp-program to "telnet localhost 27272" and M-x inferior-lisp.
+SLIME users: To hack on the demos, first start swank by going to http://localhost:8080/webjure-demos/start-swank?port=4005 and then use slime-connect from Emacs.
+
 
 
 

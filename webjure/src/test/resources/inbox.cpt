@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns:cpt="http://webjure.org/namespaces/cpt">
+  <head><title>Inbox</title></head>
+  <body>
+    <div>
+      <h3>Unnumbered list of messages</h3>
+      <span cpt:let="msgs (:messages here)">
+	<span cpt:when="(empty? msgs)">There are no messages!</span>
+	<span cpt:repeat="m msgs" cpt:include="message.cpt"/>
+      </span>
+    </div>
+  </body>    
+</html>

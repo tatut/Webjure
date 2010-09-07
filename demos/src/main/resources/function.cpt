@@ -1,0 +1,9 @@
+<div xmlns:cpt="http://webjure.org/namespaces/cpt">
+  <b>$(:name var)</b> (function) <br/>
+  arglists: 
+  <span cpt:repeat="al (:arglists var)">
+    <br/> &#160;&#160; $(str al)
+  </span>
+  <br/>
+  $(:doc var)
+</div>

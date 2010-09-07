@@ -1,0 +1,18 @@
+<html xmlns:cpt="http://webjure.org/namespaces/cpt">
+  <head>
+    <title>Webjure docs</title>
+  </head>
+  <body>
+    <h3>Documentation on all public vars in the webjure namespace</h3>
+    <a href="$(base-url)/docs/pdf">PDF version</a>
+    <div class="documentation-container" cpt:repeat="var here">
+      <hr/>
+      <div cpt:when="(:arglists var)" cpt:include="function.cpt">
+	documentation for a function
+      </div>
+      <div cpt:when="(not (:arglists var))" cpt:include="var.cpt">
+	documentation for other vars
+      </div>
+    </div>
+  </body>
+</html>

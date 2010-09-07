@@ -116,6 +116,12 @@
 	ctx (assoc ctx :template-file included-template)]
     (handle-node ctx include)))
 
+(defn escape-xml "Escape XML entities: &, < and >." [evil]
+  (let [^String s (str evil)]
+    (.replace (.replace (.replace s "&" "&amp;")
+			"<" "&lt;")
+	      ">" "&gt;")))
+
 (defn handle-text "Expands code to output text with $ form references." 
   ([text] (handle-text text []))
   ([text acc]     
@@ -127,8 +133,13 @@
 	   `(output ~@acc ~text)
 	   ;; Expansion found
 	   (let [before (.substring text 0 dollar-pos)
-		 [item after] (read-first (.substring text (+ 1 dollar-pos)))]
-	     (handle-text after (concat acc [before item]))))))))
+		 text (.substring text (+ 1 dollar-pos))
+		 escape? (not (.startsWith text "@"))
+		 text (if escape? text (.substring text 1))
+		 [item after] (read-first text)]
+	     (handle-text after (concat acc [before (if escape?
+						      `(escape-xml ~item)
+						      item)]))))))))
 
 
 	 

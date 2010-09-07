@@ -21,7 +21,7 @@
     
     <div id="content">
       <div id="columnA">
-	$(:content here)
+	$@(:content here)
       </div>
       <div id="columnB">
 	<h2>Recent Updates</h2>

@@ -1,0 +1,4 @@
+<div xmlns:cpt="http://webjure.org/namespaces/cpt">
+  var: $(:name var) <br/>
+  $(:doc var)
+</div>

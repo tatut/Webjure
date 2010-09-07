@@ -32,6 +32,13 @@
       <artifactId>swank-clojure</artifactId>
       <version>1.2.1</version>
     </dependency>
+    
+    <dependency>
+      <groupId>org.apache.xmlgraphics</groupId>
+      <artifactId>fop</artifactId>
+      <version>1.0</version>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -41,7 +48,7 @@
 	<artifactId>clojure-maven-plugin</artifactId>
 	<version>1.3.3</version>
 	<configuration>
-	  <clojureOptions>-Dwebjure.cpt.path=${basedir}</clojureOptions>
+	  <clojureOptions>-Dwebjure.cpt.path=${basedir}/src/main/resources</clojureOptions>
 	</configuration>
 	<executions>
 	  <execution>

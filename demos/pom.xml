@@ -4,13 +4,13 @@
   <groupId>webjure</groupId>
   <artifactId>webjure-demos</artifactId>
   <packaging>war</packaging>
-  <version>0.7-SNAPSHOT</version>
+  <version>0.8-SNAPSHOT</version>
   <name>webjure-demos</name>
 
   <parent>
     <groupId>webjure</groupId>
     <artifactId>webjure-top</artifactId>
-    <version>0.7-SNAPSHOT</version>
+    <version>0.8-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 

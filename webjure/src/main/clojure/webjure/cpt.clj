@@ -9,7 +9,7 @@
   (:use webjure.xml)
   (:refer-clojure))
 
-(set! *warn-on-reflection* true)
+;; (set! *warn-on-reflection* true)
 
 (defmacro output [& things]
   `(do
@@ -154,10 +154,17 @@
       ;; Normal handling, after most specials have been taken care of
       (let [tag (.getTagName elt)
 	    attrs (filter #(not (cpt-attribute? %)) (attr-seq elt))
-	    children (children elt)]
+	    children (children elt)]	
 	(if (and (empty? attrs) (empty? children))
 	  `(output ~(str "<" tag "/>"))
 	  `(do (output ~(str "<" tag))
+	       ~@(let [cpt-attributes (first (filter #(= "cpt:attributes" (:name %)) (attr-seq elt)))]
+		   (when cpt-attributes
+		     `[ (doseq [[n# v#] ~(read-string (:value cpt-attributes))]
+			  (output " " n#)
+			  (when v#
+			    (output "=\"" v# "\""))) ]))
+	       
 	       ~@(map (fn [{name :name, value :value}]
 			`(do 
 			   (output ~(str " " name "=\""))

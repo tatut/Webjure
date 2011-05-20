@@ -1,0 +1,9 @@
+demos/src/main/clojure/webjure/*~
+demos/src/main/resources/*~
+webjure/src/main/clojure/webjure/*~
+webjure/src/test/clojure/webjure/cpt/*~
+webjure/src/test/resources/*~
+demos/target/
+webjure/target/
+.gitignore~
+derby.log

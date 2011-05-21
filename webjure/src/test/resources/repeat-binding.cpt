@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<foo xmlns:cpt="http://webjure.org/namespaces/cpt">
+<value cpt:repeat="[id value] here" id="$id">$value</value>
+</foo>

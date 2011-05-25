@@ -100,12 +100,15 @@
 (define-attribute-handler handle-repeat "cpt:repeat" ctx value elt
   (let [[var items] (read-many value)
 	var-idx (symbol (str var "-idx"))]
-    `(loop [[item# & items#] ~items
-	    ~var-idx 0]
-       (when (not (nil? item#))
+    `(let [items# ~items
+	   item-count# (count items#)]
+       (loop [[item# & items#] items#
+	      i# 0
+	      ~var-idx 0]
+       (when (< i# item-count#)
 	 (let [~var item#]
 	   ~(handle-element ctx (.cloneNode elt true))
-	   (recur items# (+ 1 ~var-idx)))))))
+	   (recur items# (+ i# 1) (+ 1 ~var-idx))))))))
 
 (define-attribute-handler handle-replace "cpt:replace" ctx value elt
   `(output ~@(read-many value)))

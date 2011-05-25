@@ -35,7 +35,7 @@
     (loop [acc []
 	   row-count 0]	   
       (if (= false (. result-set (next)))
-	(let [result-list (or (reverse acc) (list))]
+	(let [result-list acc]
 	  (with-meta result-list {:columns columns :rows row-count}))
 	(recur (conj acc (doall (map (fn [i] (. result-set (getObject i)))
 						     (range 1 (+ 1 column-count)))))

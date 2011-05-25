@@ -1,0 +1,65 @@
+<html>
+  <head>
+    <style>      
+      tr.header { background-color: lightGray; }
+      tr.header td { padding-right: 24px; }
+      td.sortAscending { 
+         background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA20lEQVR42rWSMQrCQBBF3wZP4gUkF/EAihfYpFNIlcpKSLpEsA6KhRDQwhMIahNsLWy09A5rs9EYWRMifliYGZj5f/6ssLtuD5jzQj9bRwtqwsqbs3UkgLg0rBKtPLC7rqIBrDwoKGg2wIBGqv6CWkrkLwxSs8gmSiSgTpdMlYbIOtKFbma1WwIwHkwAnMJJRdUZnU7bfhb8xAOIb/eraYW3ZwFTwNHMAGwOKbNtZFIsgFDn4YcXm0Oq/MRTfuIpgweBrgfFnyhz2cfz/tvKATDUzKOiQarCaOMZH3A8S96taPbNAAAAAElFTkSuQmCC') center right no-repeat; 
+      }
+      td.sortDescending { 
+         background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAA00lEQVR42r2TMQrCQBBF34pHsNRDeBEPoOQCm/RWVlZC7LKCtQQshIApPIGgNmJrYRPL3GFtJqJRdI3oL2fnz//zmVWA5REKR9SkWQFjqY2pgFCchH8nqzcZ2E/y+CmsS5P+RkGLiq7iRAP2cNrb0hDtYl0JmcV6DsDQGwH4gHG5SiVKZjDrX4tDb8Q5z2g2WncD2p2gC8Q3/F4NmAC+KAOQbhOmq+iZYAywX0ZKHMZ1eZiIskm3Cbvj5uXe7U5gbz9TEZg559lbcskBhQMDFDt/hAsegULD0k+hhQAAAABJRU5ErkJggg==') center right no-repeat; 
+      }
+      tr.data:hover { background-color: Wheat; }
+      span.sqlNull { 
+         font-size: 65%; 
+	 font-variant: small-caps; 
+	 color: gray; 	
+	 text-align: center;
+	 margin-left: auto;
+	 margin-right: auto;
+	 display: block;
+      }
+      span.center {
+         text-align: center;
+	 margin-left: auto;
+	 margin-right: auto;
+	 display: block;
+      }
+      tr.paging td { text-align: center; }
+    </style>
+  </head>
+  <body>
+    <table cpt:let="field-label (fn [f] (or (get (get (:fields here) f) :label) (name f)))">
+      <tr class="header">
+	<td cpt:repeat="[label field] (map (fn [x] [(field-label x) x]) (:list-fields here))"
+	    cpt:attributes='(listing-header-sort-attributes here field)'>
+	  $label
+	</td>
+      </tr>
+      <tr class="data" cpt:repeat="row (:rows here)" onclick="document.location.search='_edit=$(first row)'">
+	<td cpt:repeat="col (rest row)">
+	  $@(render-list-view col)
+	</td>
+      </tr>
+      <tr class="paging">
+	<td cpt:attributes='{"colspan" (count (:list-fields here))}'>
+	  <span cpt:when="(> (:start here) 0)">
+	    <a href="$(page-link here (dec (/ (:start here) (:limit here))))">&lt; previous</a>
+	  </span>
+
+	  <span cpt:repeat="page (range 0 (/ (:total-rows here) (:limit here)))">
+	    <a cpt:when="(not (= (:start here) (* page (:limit here))))"
+	       href="$(page-link here page)">$(+ page 1)</a>
+	    <span cpt:when="(= (:start here) (* page (:limit here)))"
+		  cpt:replace="(+ page 1)">pagenum</span>
+	  </span>
+
+	  <span cpt:when="(&lt; (+ (:start here) (:limit here)) (:total-rows here))">
+	    <a href="$(page-link here (inc (/ (:start here) (:limit here))))">next &gt;</a>
+	  </span>
+	    
+	</td>
+      </tr>
+    </table>
+  </body>
+</html>

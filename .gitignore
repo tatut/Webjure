@@ -2,7 +2,9 @@ demos/src/main/clojure/webjure/*~
 demos/src/main/resources/*~
 webjure/src/main/clojure/webjure/*~
 webjure/src/test/clojure/webjure/cpt/*~
+webjure/src/main/clojure/webjure/sql/*~
 webjure/src/test/resources/*~
+webjure/src/main/resources/crud/*~
 demos/target/
 webjure/target/
 .gitignore~

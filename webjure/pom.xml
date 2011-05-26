@@ -21,7 +21,7 @@
 	<artifactId>clojure-maven-plugin</artifactId>
 	<version>1.3.3</version>
 	<configuration>
-	  <clojureOptions>-Dwebjure.cpt.path=${basedir}/src/test/resources/</clojureOptions>
+	  <clojureOptions>-Dwebjure.cpt.path=${basedir}</clojureOptions>
 	</configuration>
 	<executions>
 	  <execution>

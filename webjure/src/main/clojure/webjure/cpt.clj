@@ -258,6 +258,29 @@
 (defn- template-path []
   (or *template-path* (System/getProperty "webjure.cpt.path")))
 
+(def *reload-templates* (ref false))
+
+(defn set-reload-templates! [reload?]
+  "Set wether or not to reload templates. This affects only templates defined after setting the value."
+  (dosync
+   (ref-set *reload-templates* reload?)))
+
+(defn- generate-template-defn [name file ctx]
+  `(defn ~name 
+     ([~'here] (~name *out* ~'here))
+     ([~'^java.io.Writer output ~'here]
+	~@(optimize (handle-node ctx (load-template-xml (.getCanonicalPath file)))))))
+
+(defn generate-reloading-template-defn [name file ctx]
+  (println "NS: " (ns-name *ns*))
+  `(defn ~name 
+     ([~'here] (~name *out* ~'here))
+     ([~'^java.io.Writer output ~'here]
+	(println ~(str "RELOADING TEMPLATE " (.getCanonicalPath file)))
+	(binding [*ns* (find-ns '~(ns-name *ns*))]
+	  ((eval '(template ~(.getCanonicalPath file))) ~'output ~'here)))))
+
+  
 (defmacro define-template 
   "Define a template as a function at compile time."
   [name file]  
@@ -265,10 +288,9 @@
 	ctx {:template-file file}]
     (if (not (.canRead file))
       (throw (IllegalArgumentException. (str "Unable to define template \"" (.getCanonicalPath file) "\". The specified file cannot be read. (Maybe you need to define \"webjure.cpt.path\" system property)")))
-      `(defn ~name 
-	 ([~'here] (~name *out* ~'here))
-	 ([~'^java.io.Writer output ~'here]
-	 ~@(optimize (handle-node ctx (load-template-xml (.getCanonicalPath file)))))))))
+      (if @*reload-templates*
+	(generate-reloading-template-defn name file ctx)
+	(generate-template-defn name file ctx)))))
 
 (defmacro template [file]
   "Compile a template into a function. (fn [here] ...)"

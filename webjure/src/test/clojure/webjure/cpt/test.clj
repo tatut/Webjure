@@ -6,13 +6,13 @@
 (set! *warn-on-reflection* true)
 
 ;; Very simple template
-(define-template simple1 "simple.cpt")
+(define-template simple1 "src/test/resources/simple.cpt")
     
 ;; A template that loops over messages and includes
 ;; a subtemplate for each item
-(define-template inbox "inbox.cpt")
+(define-template inbox "src/test/resources/inbox.cpt")
 
-(define-template repeat-binding "repeat-binding.cpt")
+(define-template repeat-binding "src/test/resources/repeat-binding.cpt")
 
 (defn t [template here]
   (with-out-str (template here)))

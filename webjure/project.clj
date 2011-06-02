@@ -6,10 +6,11 @@
 		     [javax.servlet/servlet-api "2.4"]
 		     [org.mortbay.jetty/jetty "6.1.26"]]
   :aot [webjure
+	webjure.servlet
 	webjure.sql webjure.sql.crud
 	webjure.cpt
 	webjure.html
-	webjure.xml
+	webjure.xml webjure.xml.feeds
 	webjure.json
 	webjure.csv
 	webjure.websocket]

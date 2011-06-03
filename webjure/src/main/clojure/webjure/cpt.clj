@@ -145,7 +145,34 @@
 						      `(escape-xml ~item)
 						      item)]))))))))
 
+;; This is bound to a (ref {}) during template processing
+(def *magic-resources* nil)
 
+(defn sha1 [data]
+  (let [md (java.security.MessageDigest/getInstance "SHA-256")]    
+    (format "%064x" (BigInteger. 1 (.digest md (.getBytes data "UTF-8"))))))
+
+(defn handle-magic-resource [ctx elt]
+  (let [tag (.getTagName elt)
+	[first-child & other-children] (children elt)]
+
+    ;; Only consider a magic resource if this element
+    ;; has exactly one child which is a CDATA section
+    (when (and (empty? other-children)
+	       (= :cdata-section (type-of first-child)))
+
+      (let [txt (.getWholeText first-child)
+	    hash (sha1 txt)]
+	(when (> (count txt) 512) ;; don't magic resource things under half a kb
+	  (cond
+	   (= tag "style") (do
+			     (dosync
+			      (alter *magic-resources*
+				     assoc (str hash ".css") {:content-type "text/css"
+							      :data txt}))
+			     `(output ~(str "<link rel=\"stylesheet\" type=\"text/css\" href=\"/static/"
+					    hash ".css\" />")))
+	   (= tag "script") `(do (output "<script>alert('script thief was here!');</script>"))))))))
 	 
 (defn handle-element [ctx elt]
   (.normalize elt) ;; ensure Text nodes are intact
@@ -154,30 +181,34 @@
       (handle-repeat ctx elt)
       (handle-replace ctx elt)
       (handle-include ctx elt)
+      (handle-magic-resource ctx elt)
       
       ;; Normal handling, after most specials have been taken care of
       (let [tag (.getTagName elt)
 	    attrs (filter #(not (cpt-attribute? %)) (attr-seq elt))
-	    children (children elt)]	
+	    children (children elt)
+	    omit? (= tag "cpt:block")]	
 	(if (and (empty? attrs) (empty? children))
-	  `(output ~(str "<" tag "/>"))
-	  `(do (output ~(str "<" tag))
-	       ~@(let [cpt-attributes (first (filter #(= "cpt:attributes" (:name %)) (attr-seq elt)))]
-		   (when cpt-attributes
-		     `[ (doseq [[n# v#] ~(read-string (:value cpt-attributes))]
-			  (output " " n#)
-			  (when v#
-			    (output "=\"" v# "\""))) ]))
+	  (if omit? nil `(output ~(str "<" tag "/>")))
+	  (if omit?
+	    `(do ~@(map #(handle-node ctx %) children))
+	    `(do (output ~(str "<" tag))
+		 ~@(let [cpt-attributes (first (filter #(= "cpt:attributes" (:name %)) (attr-seq elt)))]
+		     (when cpt-attributes
+		       `[ (doseq [[n# v#] ~(read-string (:value cpt-attributes))]
+			    (output " " n#)
+			    (when v#
+			      (output "=\"" v# "\""))) ]))
 	       
-	       ~@(map (fn [{name :name, value :value}]
-			`(do 
-			   (output ~(str " " name "=\""))
-			   ~(handle-text value)
-			   (output "\"")))
-		      attrs)
-	       (output ">")
-	       ~@(map #(handle-node ctx %) children)
-	       (output ~(str "</" tag ">")))))))
+		 ~@(map (fn [{name :name, value :value}]
+			  `(do 
+			     (output ~(str " " name "=\""))
+			     ~(handle-text value)
+			     (output "\"")))
+			attrs)
+		 (output ">")
+		 ~@(map #(handle-node ctx %) children)
+		 (output ~(str "</" tag ">"))))))))
       
 (defmethod handle-node :element [ctx elt]
   (handle-element ctx elt))
@@ -266,13 +297,28 @@
    (ref-set *reload-templates* reload?)))
 
 (defn- generate-template-defn [name file ctx]
-  `(defn ~name 
-     ([~'here] (~name *out* ~'here))
-     ([~'^java.io.Writer output ~'here]
-	~@(optimize (handle-node ctx (load-template-xml (.getCanonicalPath file)))))))
+  (binding [*magic-resources* (ref {})]
+    (let [code    `(do
+		     (defn ~name 
+		       ([~'here] (~name *out* ~'here))
+		       ([~'^java.io.Writer output ~'here]
+			  ~@(optimize (handle-node ctx (load-template-xml (.getCanonicalPath file))))))
+		     ~@(map (fn [[name {ct :content-type data :data}]]
+			      `(webjure/defh ~(str "/static/" name) [] {}
+				 (let [res# (.getActualResponse webjure/*response*)]
+				   (.setDateHeader res# "Last-Modified" (- (System/currentTimeMillis)
+									   ~(* 1000 60 60 24)))
+				   (.setDateHeader res# "Expires" (+ (System/currentTimeMillis)
+								     ~(* 1000 60 60 24 350)))
+				   (.setHeader res# "Cache-Control" "public")
+				   (.setHeader res# "Vary" "Accept-Encoding")
+				   (webjure/send-output ~ct ~data))))
+			    @*magic-resources*))]
+      (println "magic resources after processing: " (str @*magic-resources*))
+      code)))
+       
 
 (defn generate-reloading-template-defn [name file ctx]
-  (println "NS: " (ns-name *ns*))
   `(defn ~name 
      ([~'here] (~name *out* ~'here))
      ([~'^java.io.Writer output ~'here]

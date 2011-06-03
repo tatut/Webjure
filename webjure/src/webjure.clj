@@ -127,6 +127,7 @@
   (get-request-param-values [x name])
   (get-request-params [x])
   (get-request-base-url [x])
+  (get-request-input-stream [x])
   (create-url [x mode-or-path args])
   (get-request-session-attribute [x attribute])
   (set-request-session-attribute [x attribute value]))
@@ -134,7 +135,8 @@
 (defprotocol Response
   "Webjure response abstraction"
   (get-response-writer [x])
-  (send-response-error [x error-code error-message]))
+  (send-response-error [x error-code error-message])
+  (set-response-content-type [x type]))
 
 ;; Implement the Request abstraction for HTTP Servlets 
 (extend-protocol Request
@@ -166,6 +168,9 @@
 	    (str ":" port)
 	    ""))
 	(.getContextPath req)))
+  (get-request-input-stream
+   [req]
+   (.getInputStream req))
   (create-url
    [req path args]
    (str
@@ -191,7 +196,9 @@
 (extend-protocol Response
   javax.servlet.http.HttpServletResponse
   (get-response-writer [res] (.getWriter res))
-  (send-response-error [res error-code error-message] (.sendError res error-code error-message)))
+  (send-response-error [res error-code error-message] (.sendError res error-code error-message))
+  (set-response-content-type [res type]
+			     (.setContentType res type)))
 
 		      
 (defn 
@@ -329,8 +336,8 @@
 
 ;; The main dispatch function. This is called from WebjureServlet
 (defn dispatch [^String method 
-		^webjure.Request request 
-		^webjure.Response response]
+		request 
+		response]
   (binding [*request* request
 	    *response* response]
     (binding [*matched-handler* (find-handler (request-path *request*))]
@@ -348,24 +355,24 @@
 
 (defn send-output "Send string output to client with given content-type."
   ([content-type content] (send-output *response* content-type content))
-  ([^webjure.Response response ^String content-type ^String content]
-   (.setContentType response content-type)
-   (.append (.getWriter response) content)))
+  ([response ^String content-type ^String content]
+   (set-response-content-type response content-type)
+   (.append (get-response-writer response) content)))
 
 (defn slurp-post-data "Read POST data and return it as a  string."
   ([] (slurp-post-data *request*))
-  ([^webjure.Request request]
+  ([request]
      (let [sb (new StringBuilder)]
        (with-open [in (new java.io.BufferedReader 
 			   (new java.io.InputStreamReader 
-				(.getInputStream (.getActualRequest request))))]
+				(get-request-input-stream request)))]
 	 (loop [ch (.read in)]
 	   (if (< ch 0)
 	     (.toString sb)
 	     (do
 	       (.append sb (char ch))
 	       (recur (.read in)))))))))
-  
+
 
 
 (defn format-date "Format date using a SimpleDateFormat pattern."
@@ -383,13 +390,13 @@
                             ~@(cond
 			       ;; Output anything that is printed
 			       (= :print (options :output))
-			       `((.setContentType *response* (or ~(options :content-type) "text/html"))
+			       `((set-response-content-type *response* (or ~(options :content-type) "text/html"))
 				 (binding [*out* (response-writer)]
 				   ~@body))
 
 			       ;; Output CSV 
 			       (= :csv (options :output))
-			       `((.setContentType *response* (or ~(options :content-type) "text/csv"))
+			       `((set-response-content-type *response* (or ~(options :content-type) "text/csv"))
 				 (webjure.csv/csv-format (do ~@body)))
 				       
 				   
@@ -401,14 +408,14 @@
 			       (= :html (options :output))
 			       `((let [out# (response-writer)
 				       doctype# ~(:doctype options)]
-				   (. *response* (setContentType "text/html"))		
+				   (set-response-content-type *response* "text/html")
 				   (if doctype#
 				     (append out# (str doctype# "\n")))
 				   (webjure.html/html-format out# (do ~@body))))
 
 			       ;; Output JSON 
 			       (= :json (options :output))
-			       `((. *response* (setContentType "application/json"))
+			       `((set-response-content-type *response* "application/json")
 				 (webjure.json/serialize (response-writer)
 							 (do ~@body)))
 

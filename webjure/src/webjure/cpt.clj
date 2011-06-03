@@ -158,7 +158,8 @@
 
     ;; Only consider a magic resource if this element
     ;; has exactly one child which is a CDATA section
-    (when (and (empty? other-children)
+    (when (and first-child
+	       (empty? other-children)
 	       (= :cdata-section (type-of first-child)))
 
       (let [txt (.getWholeText first-child)

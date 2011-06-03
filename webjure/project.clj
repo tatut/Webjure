@@ -13,7 +13,8 @@
 	webjure.xml webjure.xml.feeds
 	webjure.json
 	webjure.csv
-	webjure.websocket]
+	;;webjure.websocket
+	]
   :repl-init-script "src/init.clj"
   :omit-source true
   )

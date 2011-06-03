@@ -6,7 +6,8 @@
 	    HttpServlet HttpServletRequest HttpServletResponse))
   (:gen-class :name webjure.servlet.WebjureServlet
 	      :extends javax.servlet.http.HttpServlet
-	      :exposes-methods {init superInit}))
+	      :exposes-methods {init superInit
+				}))
 
 
 (defn -doGet [this ^HttpServletRequest request ^HttpServletResponse response]
@@ -16,9 +17,11 @@
   (dispatch "POST" request response))
 
 (defn -init
-  ([this] (println "init"))
+  ([this] (.log this "Webjure servlet initialized."))
   ([this config]
-     (.superInit this config)
-     (require (symbol (.getInitParameter config "startupNamespace")))))
+     (let [start-ns (.getInitParameter config "startupNamespace")]
+       (when start-ns
+	 (require (symbol start-ns))))
+     (.superInit this config)))
 
 

@@ -12,12 +12,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Global vars 
 
-(def +version+ "Webjure 0.5")
+(def +version+ "Webjure 0.8")
 
-;; The *request* and *response* vars are bound to the HttpServletRequest
-;; and HttpServletResponse of the servlet request that is currently being handled
-(def #^webjure.Request *request*) 
-(def #^webjure.Response *response*) 
+;; The *request* and *response* vars are bound to the servlet/portlet request and
+;; response objects fo the request currently being handled.
+(def *request*) 
+(def *response*) 
 
 (def #^{:doc "The matched handler info is bound here during dispatch."}
      *matched-handler* nil)
@@ -119,64 +119,106 @@
       (reverse acc)
       (recur (conj acc (. en (nextElement)))))))
 
-  
+(defprotocol Request
+  "Webjure request abstraction"
+  (get-request-path [x])
+  (get-request-headers [x])
+  (get-request-param [x name])
+  (get-request-param-values [x name])
+  (get-request-params [x])
+  (get-request-base-url [x])
+  (create-url [x mode-or-path args])
+  (get-request-session-attribute [x attribute])
+  (set-request-session-attribute [x attribute value]))
+
+(defprotocol Response
+  "Webjure response abstraction"
+  (get-response-writer [x])
+  (send-response-error [x error-code error-message]))
+
+;; Implement the Request abstraction for HTTP Servlets 
+(extend-protocol Request
+  javax.servlet.http.HttpServletRequest
+  (get-request-path [req] (.getPathInfo req))
+  (get-request-headers
+   [req]
+   (let [names (enumeration->list (.getHeaderNames req))]
+     (zipmap names
+	     (map #(.getHeaders req %) names))))
+  (get-request-param
+   [req name]
+   (.getParameter req name))
+  (get-request-param-values
+   [req name]
+   (seq (.getParameterValues req name)))
+  (get-request-params
+   [req]
+   (let [params (seq (.getParameterMap req))]
+     (zipmap (map first params)
+	     (map #(seq (second %)) params))))
+  (get-request-base-url
+   [req]
+   (str (.getScheme req)
+	"://"
+	(.getServerName req)
+	(let [port (.getServerPort req)]
+	  (if (not (or (== port 80) (== port 443)))
+	    (str ":" port)
+	    ""))
+	(.getContextPath req)))
+  (create-url
+   [req path args]
+   (str
+    (get-request-base-url req)
+    path
+    "?" 
+    (reduce str
+	    (interleave (map (fn [key]
+			       (str (urlencode (if (keyword? key)
+						 (substr (str key) 1)
+						 key))
+				    "=" (urldecode (get args key))))
+			     (keys args))
+			(repeat "&")))))
+  (get-request-session-attribute
+   [req attribute]
+   (.getAttribute (.getSession req) attribute))
+  (set-request-session-attribute
+   [req attribute value]
+   (.setAttribute (.getSession req) attribute value))
+  )
+
+(extend-protocol Response
+  javax.servlet.http.HttpServletResponse
+  (get-response-writer [res] (.getWriter res))
+  (send-response-error [res error-code error-message] (.sendError res error-code error-message)))
+
+		      
 (defn 
   #^{:doc "Returns the request path information (servlet only)"}
   request-path 
   ([] (request-path *request*))
-  ([#^webjure.Request request] (. (. request (getActualRequest)) (getPathInfo))))
+  ([request] (get-request-path request)))
 
 (defn 
   #^{:doc "Get a Writer object for this response."}
   response-writer 
   ([] (response-writer *response*))
-  ([#^webjure.Response response] (. response (getWriter))))
+  ([response] (. response (getWriter))))
 
 (defn request-headers 
   ([] (request-headers *request*))
-  ([#^webjure.Request servlet-request]    
-     (let [^javax.servlet.http.HttpServletRequest request 
-           (. servlet-request (getActualRequest))]
-       (loop [acc {} 
-              header-names (enumeration->list 
-                            (. request (getHeaderNames)))]
-         (if (empty? header-names)
-           acc
-           (let [name (first header-names)]
-             (recur (assoc acc name (enumeration->list (. request (getHeaders name))))
-                    (rest header-names))))))))
+  ([request] (get-request-headers request)))
 
 
 ;; Dynamically calculate and return the app baseurl
 ;; based on the current request
 (defn base-url 
-  ([] (base-url (. *request* (getActualRequest))))
-  ([^javax.servlet.http.HttpServletRequest request]
-     (str (. request (getScheme))
-	  "://"
-	  (. request (getServerName))
-	  (let [port (. request (getServerPort))]
-	    (if (not (or (== port 80) (== port 443)))
-	      (str ":" port)
-	      ""))
-	  (. request (getContextPath)))))
+  ([] (base-url *request*))
+  ([request]
+     (get-request-base-url request)))
 
-(defn 
-  ^{:private true}
-  create-servlet-url [^javax.servlet.HttpServletRequest request path args]
-  (str
-   (base-url request)
-   path
-   "?" 
-   (reduce str
-           (interleave (map (fn [key]
-                              (str (urlencode (if (keyword? key)
-                                                (substr (str key) 1)
-                                                key))
-                                   "=" (urldecode (get args key))))
-                            (keys args))
-                       (repeat "&")))))
-                         
+;; FIXME: implement Request abstraction fro PortletRequest 
 (defn 
   ^{:private true}
   create-portlet-url [^javax.portlet.PortletRequest request mode args] 
@@ -193,33 +235,26 @@
 (defn url "Generate an HREF URL given a path (or mode for portlets) and GET parameters."
   ([mode-or-path] (url mode-or-path {}))
   ([mode-or-path args]
-     (if (string? mode-or-path)
-       ;; create HREF from base url
-       (create-servlet-url (. *request* (getActualRequest)) mode-or-path args)
-       ;; create action or render url for portlet
-       (create-portlet-url (. *request* (getActualRequest)) mode-or-path args))))
+     (create-url *request* mode-or-path args)))
+
 
 (defn request-parameter "Get the value of a single valued request parameter."
   [^String name]
-  (.getParameter *request* name))
+  (get-request-param *request* name))
+
 
 (defn   
   multi-request-parameter "Get the values of a multi valued request parameter as a sequence."
   [^String name]
-  (seq (.getParameterValues *request* name)))
+  (get-request-param-values *request* name))
+
 
 ;; Return mapping {"param name" [values], ...}
 ;; of request parameters
 (defn request-parameters "Return a mapping of parameter names to sequences of values."
   ([] (request-parameters *request*))
-  ([^webjure.Request request] 
-     (let [param-map (.getParameterMap request)]
-       (loop [acc {}
-              [name & param-names] (seq (.keySet param-map))]
-         (if (nil? name)
-           acc
-	   (recur (assoc acc name (seq (.get param-map name)))
-		  param-names))))))
+  ([request] 
+     (get-request-params request)))
 
        
        
@@ -271,25 +306,25 @@
 ;; returned. If initial-value is an IFn then
 ;; it is invoked to produce the value to store.
 (defn session-get "Get a stored value from the client session by key. Initial value (which may be a function that generates a value) will be used if specified and no value is stored in the session."
-  ([attribute] (.getAttribute (.getSession *request*) attribute))
+  ([attribute] (get-request-session-attribute *request* attribute))
   ([attribute initial-value]
-   (let [val (session-get attribute)]
-     (if (nil? val)
-       (let [new-value (if (instance? clojure.lang.IFn initial-value)
-                         (initial-value)
-                         initial-value)]
-	 (.setAttribute (.getSession *request*) attribute new-value)
-	 new-value)
-       val))))
+     (let [val (get-request-session-attribute *request* attribute)]
+       (if (nil? val)
+	 (let [new-value (if (fn? initial-value)
+			   (initial-value)
+			   initial-value)]
+	   (set-request-session-attribute *request* attribute new-value)
+	   new-value)
+	 val))))
 
 (defn session-set "Store a value by key in the client session." 
   [name value]
-  (.setAttribute (.getSession *request*) name value))
+  (set-request-session-attribute *request* name value))
 
 (defn send-error 
   ([code message] (send-error *response* code message))
-  ([#^webjure.Response response code message]     
-     (. (. response (getActualResponse)) (sendError code message))))
+  ([response code message]     
+     (send-response-error response code message)))
 
 
 ;; The main dispatch function. This is called from WebjureServlet

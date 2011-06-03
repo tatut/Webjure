@@ -1,7 +1,7 @@
 (ns webjure.servlet
   (:refer-clojure)
   (:use webjure)
-  (:import (javax.servlet ServletException UnavailableException))
+  (:import (javax.servlet ServletConfig ServletException UnavailableException))
   (:import (javax.servlet.http
 	    HttpServlet HttpServletRequest HttpServletResponse))
   (:gen-class :name webjure.servlet.WebjureServlet
@@ -18,7 +18,7 @@
 
 (defn -init
   ([this] (.log this "Webjure servlet initialized."))
-  ([this config]
+  ([this ^ServletConfig config]
      (let [start-ns (.getInitParameter config "startupNamespace")]
        (when start-ns
 	 (require (symbol start-ns))))

@@ -122,13 +122,13 @@ from table name to it's query alias, eg. {\"firsttable\" \"t1\", \"secondtable\"
 			    (str "t1." f#)
 			    (str (tables# (:table join#)) "." (name (:field join#))))))
 	   ]
-       (.setContentType *response* "text/html; charset=UTF-8")
+       (set-response-content-type *response* "text/html; charset=UTF-8")
+       (println "REQUEST HEADERS: " (request-headers))
        (with-open
 	   [out#  (if (.contains (or (first (get (request-headers) "Accept-Encoding")) "")
 				 "gzip")
-		    (let [servlet-response# (.getActualResponse *response*)]
-		      (.setHeader servlet-response# "Content-Encoding" "gzip")
-		      (java.io.OutputStreamWriter. (java.util.zip.GZIPOutputStream. (.getOutputStream servlet-response#)) "UTF-8"))
+		    (do (.setHeader *response* "Content-Encoding" "gzip")
+			(java.io.OutputStreamWriter. (java.util.zip.GZIPOutputStream. (.getOutputStream *response*)) "UTF-8"))
 		    (response-writer))]
 	 (~(or (:list-template opt) 'webjure.sql.crud/generic-listing-template)
 	  out#

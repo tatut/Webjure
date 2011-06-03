@@ -306,16 +306,17 @@
 			  ~@(optimize (handle-node ctx (load-template-xml (.getCanonicalPath file))))))
 		     ~@(map (fn [[name {ct :content-type data :data}]]
 			      `(webjure/defh ~(str "/static/" name) [] {}
-				 (let [res# (.getActualResponse webjure/*response*)]
-				   (.setDateHeader res# "Last-Modified" (- (System/currentTimeMillis)
-									   ~(* 1000 60 60 24)))
-				   (.setDateHeader res# "Expires" (+ (System/currentTimeMillis)
-								     ~(* 1000 60 60 24 350)))
-				   (.setHeader res# "Cache-Control" "public")
-				   (.setHeader res# "Vary" "Accept-Encoding")
-				   (webjure/send-output ~ct ~data))))
+				 (doto webjure/*response*
+				   (.setDateHeader "Date" (System/currentTimeMillis))
+				   (.setDateHeader "Last-Modified" (- (System/currentTimeMillis)
+								      ~(* 1000 60 60 24)))
+				   (.setDateHeader "Expires" (+ (System/currentTimeMillis)
+								~(* 1000 60 60 24 350)))
+				   (.setHeader "Cache-Control" "public")
+				   (.setHeader "Vary" "Accept-Encoding"))
+				 (webjure/send-output ~ct ~data)))
 			    @*magic-resources*))]
-      (println "magic resources after processing: " (str @*magic-resources*))
+     ;; (println "magic resources after processing: " (str @*magic-resources*))
       code)))
        
 

@@ -136,7 +136,8 @@
   "Webjure response abstraction"
   (get-response-writer [x])
   (send-response-error [x error-code error-message])
-  (set-response-content-type [x type]))
+  (set-response-content-type [x type])
+  (send-response-redirect [x to]))
 
 ;; Implement the Request abstraction for HTTP Servlets 
 (extend-protocol Request
@@ -146,7 +147,7 @@
    [req]
    (let [names (enumeration->list (.getHeaderNames req))]
      (zipmap names
-	     (map #(.getHeaders req %) names))))
+	     (map #(enumeration->list (.getHeaders req %)) names))))
   (get-request-param
    [req name]
    (.getParameter req name))
@@ -198,7 +199,9 @@
   (get-response-writer [res] (.getWriter res))
   (send-response-error [res error-code error-message] (.sendError res error-code error-message))
   (set-response-content-type [res type]
-			     (.setContentType res type)))
+			     (.setContentType res type))
+  (send-response-redirect [res to]
+			  (.sendRedirect res to)))
 
 		      
 (defn 

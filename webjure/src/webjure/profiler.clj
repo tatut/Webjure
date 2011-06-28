@@ -74,7 +74,7 @@
       "" ;; Not profiling
       (str "<link rel=\"stylesheet\" type=\"text/css\" href=\"/_webjure_profiler/profiler.css\" />\n"
 	   "<script type=\"text/javascript\" src=\"/_webjure_profiler/profiler.js\"></script>\n"
-	   "<script type=\"text/javascript\">GaeMiniProfiler.init(\"" id "\", false)</script>"))))
+	   "<script type=\"text/javascript\">WebjureMiniProfiler.init(\"" id "\", false)</script>"))))
 
 (defn duration-of [{start :start end :end}]
   (- end start))

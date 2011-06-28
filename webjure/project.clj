@@ -1,4 +1,4 @@
-(defproject webjure "0.8-SNAPSHOT"
+(defproject webjure "0.9-SNAPSHOT"
   :description "Webjure - a Clojure web framework"
   :dependencies [[org.clojure/clojure "1.2.0"]
 		 [org.clojure/clojure-contrib "1.2.0"]]
@@ -13,6 +13,7 @@
 	webjure.xml webjure.xml.feeds
 	webjure.json
 	webjure.csv
+	webjure.profiler
 	;;webjure.websocket
 	]
   :repl-init-script "src/init.clj"

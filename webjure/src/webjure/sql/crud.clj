@@ -8,7 +8,8 @@
   (:refer-clojure)
   (:use webjure.sql)
   (:use webjure)
-  (:use webjure.cpt))
+  (:use webjure.cpt)
+  (:require webjure.profiler))
 
 (defprotocol ListView
   (render-list-view [this]))
@@ -100,71 +101,72 @@ from table name to it's query alias, eg. {\"firsttable\" \"t1\", \"secondtable\"
 	     (butlast (interleave coll (repeat sep))))))
 
 (defn generate-listing [db table opt]
-  `(with-open [db# (~db)]
-     (let [start# (Long/parseLong (or (request-parameter "start") "0"))
-	   limit# (let [lim# (request-parameter "limit")]
-		    (if lim#
-		      (Long/parseLong lim#)
-		      (or ~(:batch-size opt) +default-batch-size+)))
-	   order# (request-parameter "order")
-	   dir# (request-parameter "dir")
-	   list-fields# ~(:list-fields opt)
-	   primary-key# ~(:primary-key opt)
-	   fields# ~(:fields opt)
-	   tables# ~(determine-query-tables table (:list-fields opt) (:fields opt))
-	   from-tables# ~(determine-from-tables table (:list-fields opt) (:fields opt))
-	   foreign-key-fields# ~(determine-foreign-keys
-				 (determine-query-tables table (:list-fields opt) (:fields opt))
-				 (:fields opt))	   
-	   field-ref# (fn [f#]
-			(let [{join# :join} (fields# (keyword f#))]
-			  (if (not join#)
-			    (str "t1." f#)
-			    (str (tables# (:table join#)) "." (name (:field join#))))))
-	   ]
-       (set-response-content-type *response* "text/html; charset=UTF-8")
-       (println "REQUEST HEADERS: " (request-headers))
-       (with-open
-	   [out#  (if (.contains (or (first (get (request-headers) "Accept-Encoding")) "")
-				 "gzip")
-		    (do (.setHeader *response* "Content-Encoding" "gzip")
-			(java.io.OutputStreamWriter. (java.util.zip.GZIPOutputStream. (.getOutputStream *response*)) "UTF-8"))
-		    (response-writer))]
-	 (~(or (:list-template opt) 'webjure.sql.crud/generic-listing-template)
-	  out#
-	  {:list-fields list-fields#
-	   :fields fields#
-	   :start start#
-	   :limit limit#
-	   :order order#
-	   :dir dir#
-	   :rows (let [sql# (str 
-			     "SELECT t1." (name primary-key#) ", "
-			     (string-join
-			      (concat (map #(nth % 2) foreign-key-fields#)
-				      (map (fn [field-name#]
-					     (let [{join# :join} (fields# field-name#)]
-					       (if join#
-						 (str (tables# (:table join#)) "." (name (:field join#))
-						      " as " (name field-name#))
-						 (str "t1." (name field-name#)))))
-					   list-fields#)))
-			     " FROM " from-tables#
-			     (when order#
-			       (str " ORDER BY " (field-ref# order#) " " (if (= "asc" dir#) "ASC" "DESC")))
-			     (when (or (not (zero? start#)) (not (zero? limit#)))
-			       (str " LIMIT " start# ", " limit#)))
-		       drop# (+ 1 (count foreign-key-fields#))
-		       res# (query db# sql#)]
-		   ;; (println "QUERY: " sql#)
-		   (map (fn [row#]
-			  [(drop drop# row#)
-			   (first row#)
-			   (zipmap (map first foreign-key-fields#)
-				   (take (count foreign-key-fields#)
-					 (drop 1 row#)))])
-			res#))
-	   :total-rows (ffirst (query db# (str "SELECT COUNT( " (name primary-key#) ") FROM " ~table)))})))))
+  `(webjure.profiler/with-step "Generate CRUD listing"
+     (with-open [db# (~db)]
+       (let [start# (Long/parseLong (or (request-parameter "start") "0"))
+	     limit# (let [lim# (request-parameter "limit")]
+		      (if lim#
+			(Long/parseLong lim#)
+			(or ~(:batch-size opt) +default-batch-size+)))
+	     order# (request-parameter "order")
+	     dir# (request-parameter "dir")
+	     list-fields# ~(:list-fields opt)
+	     primary-key# ~(:primary-key opt)
+	     fields# ~(:fields opt)
+	     tables# ~(determine-query-tables table (:list-fields opt) (:fields opt))
+	     from-tables# ~(determine-from-tables table (:list-fields opt) (:fields opt))
+	     foreign-key-fields# ~(determine-foreign-keys
+				   (determine-query-tables table (:list-fields opt) (:fields opt))
+				   (:fields opt))	   
+	     field-ref# (fn [f#]
+			  (let [{join# :join} (fields# (keyword f#))]
+			    (if (not join#)
+			      (str "t1." f#)
+			      (str (tables# (:table join#)) "." (name (:field join#))))))
+	     ]
+	 (set-response-content-type *response* "text/html; charset=UTF-8")
+	 (println "REQUEST HEADERS: " (request-headers))
+	 (with-open
+	     [out#  (if (.contains (or (first (get (request-headers) "Accept-Encoding")) "")
+				   "gzip")
+		      (do (.setHeader *response* "Content-Encoding" "gzip")
+			  (java.io.OutputStreamWriter. (java.util.zip.GZIPOutputStream. (.getOutputStream *response*)) "UTF-8"))
+		      (response-writer))]
+	   (~(or (:list-template opt) 'webjure.sql.crud/generic-listing-template)
+	    out#
+	    {:list-fields list-fields#
+	     :fields fields#
+	     :start start#
+	     :limit limit#
+	     :order order#
+	     :dir dir#
+	     :rows (let [sql# (str 
+			       "SELECT t1." (name primary-key#) ", "
+			       (string-join
+				(concat (map #(nth % 2) foreign-key-fields#)
+					(map (fn [field-name#]
+					       (let [{join# :join} (fields# field-name#)]
+						 (if join#
+						   (str (tables# (:table join#)) "." (name (:field join#))
+							" as " (name field-name#))
+						   (str "t1." (name field-name#)))))
+					     list-fields#)))
+			       " FROM " from-tables#
+			       (when order#
+				 (str " ORDER BY " (field-ref# order#) " " (if (= "asc" dir#) "ASC" "DESC")))
+			       (when (or (not (zero? start#)) (not (zero? limit#)))
+				 (str " LIMIT " start# ", " limit#)))
+			 drop# (+ 1 (count foreign-key-fields#))
+			 res# (webjure.profiler/with-step "Execute SQL query" (query db# sql#))]
+		     ;; (println "QUERY: " sql#)
+		     (map (fn [row#]
+			    [(drop drop# row#)
+			     (first row#)
+			     (zipmap (map first foreign-key-fields#)
+				     (take (count foreign-key-fields#)
+					   (drop 1 row#)))])
+			  res#))
+	     :total-rows (ffirst (query db# (str "SELECT COUNT( " (name primary-key#) ") FROM " ~table)))}))))))
 	       
 
 (defn generate-select [db field table display-field value-field]
@@ -189,16 +191,17 @@ from table name to it's query alias, eg. {\"firsttable\" \"t1\", \"secondtable\"
   (let [opt-pairs (partition 2 options)
 	opt (zipmap (map first opt-pairs)
 		    (map second opt-pairs))]
-    `(let [delete# (request-parameter "_delete")
-	   edit# (request-parameter "_edit")
-	   save# (request-parameter "_save")]
-       (if delete#
-	 (send-output "text/plain" (str "Deleting " delete#))
-	 (if edit#
-	   (send-output "text/plain" (str "Showing edit form for " edit#))
-	   (if save#
-	     (send-output "text/plain" (str "Saving " save#))
-	     ~(generate-listing db table opt)))))))
+    `(webjure.profiler/with-request-profiling
+       (let [delete# (request-parameter "_delete")
+	     edit# (request-parameter "_edit")
+	     save# (request-parameter "_save")]
+	 (if delete#
+	   (send-output "text/plain" (str "Deleting " delete#))
+	   (if edit#
+	     (send-output "text/plain" (str "Showing edit form for " edit#))
+	     (if save#
+	       (send-output "text/plain" (str "Saving " save#))
+	       ~(generate-listing db table opt))))))))
 
 (defmacro define-crud-handler [prefix db table & options]
   (let [opt-pairs (partition 2 options)
@@ -206,8 +209,9 @@ from table name to it's query alias, eg. {\"firsttable\" \"t1\", \"secondtable\"
 		    (map second opt-pairs))]
     `(defh ~(re-pattern (str prefix "(/([^/]+))?$"))
        [pk# 2] {}
-       (if pk#
-	 (do 
-	   (send-output "text/plain" (str (if (request-parameter "edit")
-					    "Edit " "View ") pk#)))	   
-	 ~(generate-listing db table opt)))))
+       (webjure.profiler/with-request-profiling
+	 (if pk#
+	   (do 
+	     (send-output "text/plain" (str (if (request-parameter "edit")
+					      "Edit " "View ") pk#)))	   
+	   ~(generate-listing db table opt))))))

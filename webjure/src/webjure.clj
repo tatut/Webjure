@@ -130,7 +130,8 @@
   (get-request-input-stream [x])
   (create-url [x mode-or-path args])
   (get-request-session-attribute [x attribute])
-  (set-request-session-attribute [x attribute value]))
+  (set-request-session-attribute [x attribute value])
+  (remove-request-session-attribute [x attribute]))
 
 (defprotocol Response
   "Webjure response abstraction"
@@ -192,6 +193,9 @@
   (set-request-session-attribute
    [req attribute value]
    (.setAttribute (.getSession req) attribute value))
+  (remove-request-session-attribute
+   [req attribute]
+   (.removeAttribute (.getSession req) attribute))
   )
 
 (extend-protocol Response
@@ -331,6 +335,10 @@
   [name value]
   (set-request-session-attribute *request* name value))
 
+(defn session-remove "Remove a value by key in the client session."
+  [name]
+  (remove-request-session-attribute *request* name))
+
 (defn send-error 
   ([code message] (send-error *response* code message))
   ([response code message]     
@@ -426,3 +434,7 @@
 	    ~url))
 
   
+(defmacro define-static-resource [file content-type url-path]
+  (let [content (slurp file)]
+    `(defh ~url-path [] {}
+       (send-output ~content-type ~content))))

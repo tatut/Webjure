@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<span xmlns:cpt="http://www.webjure.org/namespaces/cpt">
+  <div class="g-m-p-corner"
+       onclick="var jCorner = jQuery('.g-m-p-corner'); jQuery('#$(:id here)').css('left', jCorner.offset().left + jCorner.width() + 18).toggle()">
+    
+    $(:total here) ms
+    
+  </div>
+
+  <div class="g-m-p" style="display: none;" id="$(:id here)">
+    <div class="title">             
+      <span class="url" title="$(:url here)">
+	$(:url here)
+      </span>
+      <div class="total">$(:total here) <span class="ms">ms</span> 
+      </div>
+      </div>
+      <div class="date_and_share">
+	<span class="date">$(.format (java.text.SimpleDateFormat. "dd.MM.yyyy HH:mm:ss") (java.util.Date.))</span>
+      </div>      
+
+      <div class="profiler-details details fancy-scrollbar">
+	<table>
+	  <thead>
+	    <tr>
+	      <th class="left" width="70%">item</th>
+	      <th class="right" width="15%"><nobr>total ms</nobr></th>
+	      <th class="right" width="15%"><nobr>own ms</nobr></th>
+	    </tr>
+	  </thead>
+
+	  <tbody>
+	    <tr cpt:repeat="{:keys [name indent total-ms own-ms]} (:report here)">
+	      <td title="$name">
+		<span style="padding: $(* 8 indent)px;">$@"&amp;nbsp;"</span>
+		$name
+	      </td>
+	      <td class="right">
+		$total-ms
+	      </td>
+	      <td class="right">
+		$own-ms
+	      </td>
+	    </tr>
+	  </tbody>
+	</table>
+      </div>
+  </div>
+</span>

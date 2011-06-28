@@ -5,6 +5,10 @@ webjure/src/test/clojure/webjure/cpt/*~
 webjure/src/main/clojure/webjure/sql/*~
 webjure/src/test/resources/*~
 webjure/src/main/resources/crud/*~
+webjure/src/main/resources/profiler/*~
+webjure/src/*~
+webjure/src/webjure/*~
+webjure/*~
 demos/target/
 webjure/target/
 .gitignore~

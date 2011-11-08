@@ -37,12 +37,14 @@
       span.editable span.sqlNull {
         display: inline !important;
       }
-      span.editable:hover a.clickToEdit {
-         visibility: visible !important;
+
+      span.editable span.current {
+         padding-right: 20px;
       }
-      a.clickToEdit {
+      span.editable:hover span.current {
          background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAiRJREFUeNqEU19IU2EU/9275XK7GVHKROslTbMRDheGPuy5YOBEFkG5CKxu9Bw+rIfoxYciqNCHFNsoCIp69DESFKRIKisLE7Nt7k8mybbu3Xfvbve7dm/3bjF/cL7L+bi/c37nnO8wiqIgFouNAuBRHWMtm3OXyy/t9JBlmQ+Hw1XZ0WiU/+zyoS3/2hKEpYckSZqTzWaRyWQ0S6fTSKVSmlEEAgGACPxSTXvUd2bIqoAQojkMw1iyUp+WSOGyy+jc+R2w2QanHj5pcSPRaygwB/ifiZtZfHx+Cx0nT6DVM4sDXLwnQQ7NGAqKxaIlAM2qf+scwMLTERzt6wdZuQBFWIS72Q8xJ/QIhV1NFQHM4HaU8PbxDXgHThnkXL4NyW97YXc24PiVuwmtBFEUK0qgNc8/ulZGbkVipQMl2Y4j/RHM3evb6oGugGVZjey0SXjzYBhdobNlZA9ktV2e03dwfeT2vymYFVC8mozAF7oEKRmxkIkooXPwPhx19Qanoge5tSXsaWxCrdsLogxjYz2H5GojinkB3vOTKKjyHWbV5Qoy71/goD8EaX1ZvdkNrvkifv/Ka2RBqTFUWhTo74Dix6dZtHcfQ+FnEhvxr1h8OQX/1WcQ1bzmIekcSwnq4LG6/AHTEzfh3Lcf9Yd70cXHQNhaMH9fpA7Kib/7shWA7gKdgIvjcG58AQxrq7pY9F/KUUqyEWAsGAxut84V602PPwIMAJxGDk+gQRv5AAAAAElFTkSuQmCC') center right no-repeat;
 	 text-decoration: none;
-	 visibility: hidden;
+	 padding-right: 20px;
+	 
       }
     ]]></style>

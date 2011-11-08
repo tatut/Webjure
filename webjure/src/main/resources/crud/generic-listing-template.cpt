@@ -1,6 +1,6 @@
 <html>
   <head> 
-    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"> </script> 
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"> </script> 
 
     <style cpt:include="crud-styles.cpt"/>
   </head>
@@ -15,12 +15,17 @@
       <tr class="data" 
 	  cpt:repeat="[row primary-key foreign-keys] (:rows here)" 
 	  onclick="document.location.pathname += '/$primary-key'">
-	<td cpt:repeat="[col {lnk :listing-link-to join :join}] (map (fn [row f] [row (get (:fields here) f)]) row (:list-fields here))">
+	<td cpt:repeat="[col {lnk :listing-link-to join :join edit :inline-edit :as field-options} field] (map (fn [row f] [row (get (:fields here) f) f]) row (:list-fields here))">
 	  <cpt:block cpt:when="(and col lnk)">
 	    <a class="listingLink" cpt:attributes="(lnk (foreign-keys (:table join)) col)">$(render-list-view col)</a>
 	  </cpt:block>
 	  <cpt:block cpt:when="(not (and col lnk))">
-	    <span class="editable">$@(render-list-view col) <a href="#" onclick="event.stopPropagation(); alert('edit'); return false;" class="clickToEdit">&#160;&#160;&#160;&#160;</a> </span>
+	    <cpt:block cpt:when="(not (nil? edit))">
+	      $@(render-inline-edit-view edit field col)		      
+	    </cpt:block>
+	    <cpt:block cpt:when="(nil? edit)">
+	      $@(render-list-view col)
+	    </cpt:block>
 	  </cpt:block>
 	</td>
       </tr>

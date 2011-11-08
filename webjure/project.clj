@@ -1,4 +1,4 @@
-(defproject webjure "0.9-SNAPSHOT"
+(defproject webjure "0.9.1-SNAPSHOT"
   :description "Webjure - a Clojure web framework"
   :dependencies [[org.clojure/clojure "1.2.0"]
 		 [org.clojure/clojure-contrib "1.2.0"]]
@@ -7,7 +7,7 @@
 		     [org.mortbay.jetty/jetty "6.1.26"]]
   :aot [webjure
 	webjure.servlet
-	webjure.sql webjure.sql.crud
+	webjure.sql webjure.sql.crud webjure.sql.crud.editors
 	webjure.cpt
 	webjure.html
 	webjure.xml webjure.xml.feeds

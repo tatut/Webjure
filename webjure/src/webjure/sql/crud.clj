@@ -2,7 +2,21 @@
 ;;
 ;; Main entry point is the ui macro which is meant to be called from inside a
 ;; Webjure handler.
-
+;;
+;; This core namespace defines the used protocols and
+;; the main macros for creating CRUD views.
+;;
+;; Protocols
+;; ---------
+;;
+;; InlineEdit:
+;; Protocol for defining a way to allow inline editing of a column
+;; data inside the listing view.
+;; Uses AJAX calls to update the values, which the protocol must provide.
+;; Use by defining an :inline-edit key in the field options.
+;;
+;; ListView:
+;; Generic way to render different data types.
 
 (ns webjure.sql.crud
   (:refer-clojure)
@@ -11,8 +25,31 @@
   (:use webjure.cpt)
   (:require webjure.profiler))
 
+;; Bound within a handler to the prefix of this CRUD handler
+;; May be used for generating new URLs 
+(def *current-path-prefix* nil)
+
+(defn crud-url [path argmap]
+  (str *current-path-prefix*
+       path
+       "?"(reduce str
+                  (butlast  (interleave (map (fn [[k v]]
+                                               (str (name k) "=" v))
+                                             argmap)
+                                        (repeat "&"))))))
+
 (defprotocol ListView
   (render-list-view [this]))
+
+(defprotocol InlineEdit
+  ;; Method to render an HTML/JS inline edit view (and link)
+  (render-inline-edit-view [this field current-value])
+
+  ;; Invoked by the AJAX handler of new values
+  ;; the response will be JSONified and should be something
+  ;; the UI rendereded by render-inline-edit-view can handle.
+  (update-value [this id field new-value]))
+    
 
 (defn page-link [here page]
   (let [{:keys [limit order dir]} here]
@@ -209,9 +246,10 @@ from table name to it's query alias, eg. {\"firsttable\" \"t1\", \"secondtable\"
 		    (map second opt-pairs))]
     `(defh ~(re-pattern (str prefix "(/([^/]+))?$"))
        [pk# 2] {}
-       (webjure.profiler/with-request-profiling
-	 (if pk#
-	   (do 
-	     (send-output "text/plain" (str (if (request-parameter "edit")
-					      "Edit " "View ") pk#)))	   
-	   ~(generate-listing db table opt))))))
+       (binding [*current-path-prefix* ~prefix]
+         (webjure.profiler/with-request-profiling
+           (if pk#
+             (do 
+               (send-output "text/plain" (str (if (request-parameter "edit")
+                                                "Edit " "View ") pk#)))	   
+             ~(generate-listing db table opt)))))))
